@@ -1,0 +1,1472 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>E81C 계산기</title>
+<style>
+:root{
+  --paper:#F2F5F6;
+  --surface:#FFFFFF;
+  --ink:#151B1E;
+  --ink-soft:#57646B;
+  --ink-faint:#8B979C;
+  --line:#D7E0E3;
+  --accent:#1E6E7A;
+  --accent-ink:#0E4750;
+  --accent-soft:#D8ECEE;
+  --plate:#D4372F;
+  --plate-soft:#FBDFDD;
+  --band:#D89A1F;
+  --band-soft:#FBEDD1;
+  --correct:#8B97A0;
+  --ok:#1E7A4C;
+  --shadow: 0 1px 2px rgba(15,20,22,0.06), 0 8px 22px -14px rgba(15,20,22,0.24);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#13181A;
+    --surface:#1B2224;
+    --ink:#E9EEEF;
+    --ink-soft:#9FADB2;
+    --ink-faint:#6C7A80;
+    --line:#2B3538;
+    --accent:#4FA3AE;
+    --accent-ink:#BFE3E7;
+    --accent-soft:#193338;
+    --plate:#E8685F;
+    --plate-soft:#3A211F;
+    --band:#E0B24C;
+    --band-soft:#332711;
+    --correct:#98A3AB;
+    --ok:#5FBF8B;
+    --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 8px 22px -14px rgba(0,0,0,0.6);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#13181A;
+  --surface:#1B2224;
+  --ink:#E9EEEF;
+  --ink-soft:#9FADB2;
+  --ink-faint:#6C7A80;
+  --line:#2B3538;
+  --accent:#4FA3AE;
+  --accent-ink:#BFE3E7;
+  --accent-soft:#193338;
+  --plate:#E8685F;
+  --plate-soft:#3A211F;
+  --band:#E0B24C;
+  --band-soft:#332711;
+  --correct:#98A3AB;
+  --ok:#5FBF8B;
+  --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 8px 22px -14px rgba(0,0,0,0.6);
+}
+
+*{box-sizing:border-box;}
+html, body{margin:0;}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'Noto Sans KR', 'Malgun Gothic', -apple-system, sans-serif;
+  font-size:14px;
+  padding-inline:16px;
+  padding-block:22px 60px;
+}
+.wrap{max-width:1180px; margin:0 auto;}
+
+.eyebrow{
+  font-family:'IBM Plex Mono', Consolas, monospace;
+  font-size:11.5px;
+  letter-spacing:0.08em;
+  color:var(--accent-ink);
+  text-transform:uppercase;
+  margin-bottom:6px;
+}
+h1{
+  font-family:'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  font-weight:900;
+  font-size:clamp(24px,4vw,32px);
+  letter-spacing:-0.01em;
+  margin:0 0 6px;
+  text-wrap:balance;
+}
+.lede{
+  font-size:14px;
+  line-height:1.6;
+  color:var(--ink-soft);
+  max-width:70ch;
+  margin-bottom:22px;
+}
+.lede code{
+  font-family:'IBM Plex Mono', Consolas, monospace;
+  background:var(--accent-soft);
+  color:var(--accent-ink);
+  padding:1px 5px;
+  border-radius:4px;
+  font-size:12.5px;
+}
+
+.tabs{
+  display:flex;
+  gap:6px;
+  margin-bottom:18px;
+  border-bottom:1px solid var(--line);
+}
+.tab-btn{
+  font-family:'IBM Plex Mono', Consolas, monospace;
+  font-size:12.5px;
+  padding:9px 14px;
+  background:none;
+  border:none;
+  border-bottom:2px solid transparent;
+  color:var(--ink-faint);
+  cursor:pointer;
+  margin-bottom:-1px;
+}
+.tab-btn.active{color:var(--accent-ink); border-color:var(--accent); font-weight:600;}
+
+.steps{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  margin-bottom:18px;
+}
+.step-chip{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-family:'IBM Plex Mono', Consolas, monospace;
+  font-size:11.5px;
+  padding:6px 11px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:var(--surface);
+  color:var(--ink-faint);
+}
+.step-chip .n{
+  width:15px; height:15px;
+  border-radius:50%;
+  background:var(--line);
+  color:var(--surface);
+  display:flex; align-items:center; justify-content:center;
+  font-size:9.5px;
+  font-weight:600;
+}
+.step-chip.active{border-color:var(--accent); color:var(--accent-ink); background:var(--accent-soft);}
+.step-chip.active .n{background:var(--accent); color:#fff;}
+.step-chip.done{color:var(--ink-soft);}
+.step-chip.done .n{background:var(--ok); color:#fff;}
+
+.layout{
+  display:grid;
+  grid-template-columns:1.5fr 1fr;
+  gap:20px;
+  align-items:start;
+}
+@media (max-width:860px){ .layout{grid-template-columns:1fr;} }
+
+.panel{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:16px;
+  box-shadow:var(--shadow);
+}
+
+.upload-zone{
+  border:1.5px dashed var(--line);
+  border-radius:12px;
+  padding:36px 16px;
+  text-align:center;
+  color:var(--ink-faint);
+  font-size:13px;
+}
+.upload-zone input{display:none;}
+.btn{
+  font-family:'IBM Plex Mono', Consolas, monospace;
+  font-size:12.5px;
+  padding:9px 16px;
+  border-radius:8px;
+  border:1px solid var(--accent);
+  background:var(--accent);
+  color:#fff;
+  cursor:pointer;
+}
+.btn.ghost{background:var(--surface); color:var(--accent-ink); border-color:var(--line);}
+.btn.ghost:hover{border-color:var(--accent);}
+.btn:disabled{opacity:0.4; cursor:not-allowed;}
+.btn.small{padding:6px 11px; font-size:11.5px;}
+
+.canvas-stage{
+  position:relative;
+  width:100%;
+  background:repeating-conic-gradient(var(--paper) 0% 25%, var(--surface) 0% 50%) 50% / 16px 16px;
+  border-radius:10px;
+  overflow:hidden;
+  touch-action:none;
+}
+.canvas-stage canvas{
+  display:block;
+  width:100%;
+  height:auto;
+  position:absolute;
+  top:0; left:0;
+}
+.canvas-stage .base-layer{position:static;}
+
+.hint-bar{
+  margin-top:10px;
+  font-size:12.5px;
+  line-height:1.55;
+  color:var(--accent-ink);
+  background:var(--accent-soft);
+  border-radius:8px;
+  padding:9px 12px;
+}
+.hint-bar.warn{color:#7A4A0E; background:var(--band-soft);}
+
+.toolrow{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:12px;
+}
+
+.field{margin-top:14px;}
+.field label{
+  display:block;
+  font-family:'IBM Plex Mono', Consolas, monospace;
+  font-size:11px;
+  color:var(--ink-faint);
+  text-transform:uppercase;
+  letter-spacing:0.04em;
+  margin-bottom:6px;
+}
+.field input[type="number"]{
+  width:100%;
+  padding:9px 10px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'IBM Plex Mono', Consolas, monospace;
+  font-size:14px;
+}
+.inline-form{display:flex; gap:8px; align-items:flex-end;}
+.inline-form .field{flex:1; margin-top:0;}
+
+.toggle-row{display:flex; gap:8px; margin-top:8px;}
+.toggle-btn{
+  flex:1;
+  font-family:'IBM Plex Mono', Consolas, monospace;
+  font-size:12px;
+  padding:8px 10px;
+  border-radius:8px;
+  border:1px solid var(--line);
+  background:var(--paper);
+  color:var(--ink-soft);
+  cursor:pointer;
+}
+.toggle-btn.active{border-color:var(--accent); background:var(--accent-soft); color:var(--accent-ink); font-weight:600;}
+
+.slider-row{margin-top:10px;}
+.slider-row input[type="range"]{width:100%; accent-color:var(--accent);}
+.slider-readout{
+  display:flex;
+  justify-content:space-between;
+  font-family:'IBM Plex Mono', Consolas, monospace;
+  font-size:12px;
+  color:var(--ink-faint);
+  margin-top:4px;
+}
+.slider-readout b{color:var(--ink); font-weight:600;}
+
+.legend{display:flex; gap:14px; margin-top:10px; flex-wrap:wrap;}
+.legend span{display:flex; align-items:center; gap:5px; font-size:11.5px; color:var(--ink-soft);}
+.legend i{width:10px; height:10px; border-radius:3px; display:inline-block;}
+
+h2{
+  font-family:'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  font-weight:700;
+  font-size:14.5px;
+  margin:0 0 4px;
+}
+.panel + .panel{margin-top:16px;}
+
+.result-grid{display:flex; flex-direction:column; gap:10px; margin-top:12px;}
+.result-card{
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:12px 14px;
+  background:var(--paper);
+}
+.result-card .r-label{
+  font-family:'IBM Plex Mono', Consolas, monospace;
+  font-size:10.5px;
+  color:var(--ink-faint);
+  text-transform:uppercase;
+  letter-spacing:0.04em;
+  margin-bottom:4px;
+}
+.result-card .r-value{
+  font-family:'IBM Plex Mono', Consolas, monospace;
+  font-weight:600;
+  font-size:22px;
+  font-variant-numeric:tabular-nums;
+}
+.result-card.hero{
+  background:var(--accent-soft);
+  border-color:var(--accent);
+}
+.result-card.hero .r-value{color:var(--accent-ink); font-size:28px;}
+.formula-line{
+  font-family:'IBM Plex Mono', Consolas, monospace;
+  font-size:12px;
+  color:var(--ink-soft);
+  margin-top:6px;
+  word-break:break-all;
+}
+.result-card.pending{opacity:0.55;}
+.result-card .r-sub{font-size:11.5px; color:var(--ink-faint); margin-top:3px;}
+
+.slot-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 0;
+}
+.slot-row .slot-name{
+  font-family:'IBM Plex Mono', Consolas, monospace;
+  font-size:12px;
+  color:var(--ink-soft);
+  width:52px;
+  flex:none;
+}
+.slot-row .slot-value{
+  font-family:'IBM Plex Mono', Consolas, monospace;
+  font-weight:600;
+  font-size:14px;
+  flex:1;
+  font-variant-numeric:tabular-nums;
+}
+.slot-row.filled .slot-value{color:var(--accent-ink);}
+
+.e69b-input{
+  display:flex;
+  gap:8px;
+  margin-top:8px;
+}
+.e69b-input input{
+  flex:1;
+  padding:8px 10px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--surface);
+  color:var(--ink);
+  font-family:'IBM Plex Mono', Consolas, monospace;
+  font-size:13px;
+}
+
+.save-row{
+  margin-top:14px;
+  padding-top:14px;
+  border-top:1px solid var(--line);
+}
+.save-row .inline-form{align-items:stretch;}
+.save-hint{font-size:11.5px; color:var(--ink-faint); margin-top:6px;}
+
+.log-toolbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:14px;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.log-count{font-family:'IBM Plex Mono', Consolas, monospace; font-size:12.5px; color:var(--ink-faint);}
+
+.log-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));
+  gap:12px;
+}
+.log-card{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:12px;
+  overflow:hidden;
+  box-shadow:var(--shadow);
+}
+.log-thumb{
+  width:100%;
+  aspect-ratio:4/3;
+  object-fit:cover;
+  display:block;
+  background:var(--paper);
+}
+.log-thumb-empty{
+  width:100%;
+  aspect-ratio:4/3;
+  background:var(--paper);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--ink-faint);
+  font-size:11px;
+}
+.log-body{padding:11px 13px;}
+.log-cellid{
+  font-weight:700;
+  font-size:14.5px;
+  margin-bottom:6px;
+  word-break:break-all;
+}
+.sum-badge{
+  display:inline-block;
+  font-family:'IBM Plex Mono', Consolas, monospace;
+  font-weight:400;
+  font-size:9.5px;
+  color:var(--accent-ink);
+  background:var(--accent-soft);
+  padding:2px 7px;
+  border-radius:999px;
+  margin-left:6px;
+  vertical-align:middle;
+}
+.log-row{
+  display:flex;
+  justify-content:space-between;
+  font-family:'IBM Plex Mono', Consolas, monospace;
+  font-size:12px;
+  color:var(--ink-soft);
+  padding:3px 0;
+}
+.log-row b{color:var(--ink);}
+.log-time{font-size:10.5px; color:var(--ink-faint); margin-top:6px;}
+.log-actions{display:flex; gap:6px; margin-top:8px;}
+.log-del, .log-download{
+  flex:1;
+  font-family:'IBM Plex Mono', Consolas, monospace;
+  font-size:11px;
+  padding:6px;
+  border-radius:6px;
+  border:1px solid var(--line);
+  background:var(--paper);
+  color:var(--ink-faint);
+  cursor:pointer;
+}
+.log-del:hover{border-color:var(--plate); color:var(--plate);}
+.log-download:hover{border-color:var(--accent); color:var(--accent-ink);}
+.log-empty{
+  text-align:center;
+  padding:40px 16px;
+  color:var(--ink-faint);
+  font-size:13px;
+}
+
+footer{
+  margin-top:28px;
+  padding-top:14px;
+  border-top:1px solid var(--line);
+  font-size:11.5px;
+  color:var(--ink-faint);
+  line-height:1.6;
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">리튬 석출 면적 · 배터리 QC</div>
+  <h1>E81C 계산기</h1>
+  <p class="lede">
+    이미지를 올린 뒤 <b>①분석할 영역만 잘라내고 → ②눈금자 위에서 5mm 지점 → ③15mm 지점을 순서대로 클릭</b>하면
+    두 지점 사이가 정확히 10mm라는 사실로 축척과 5–15mm 분석 구간이 한 번에 정해집니다.
+    이어서 ImageJ의 Otsu 자동 임계값 방식과 동일한 알고리즘으로 리튬 석출 면적률(%)을 구하고,
+    <code>E81C = (958 × 면적률) / 30656</code> 공식에 바로 대입한 값을 보여줍니다.
+  </p>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tabCalc">계산기</button>
+    <button class="tab-btn" id="tabLog">측정 기록<span id="logCountBadge"></span></button>
+  </div>
+
+  <div id="calcView">
+  <div class="steps" id="steps"></div>
+
+  <div class="layout">
+    <div class="panel">
+      <h2>작업 이미지</h2>
+      <div id="uploadWrap" class="upload-zone" tabindex="0">
+        <div style="margin-bottom:10px;">분석할 이미지를 선택하거나, 이 영역을 클릭한 뒤 <b>Ctrl+V</b>로 붙여넣으세요<br/>(눈금자와 전극 표면이 함께 보여야 합니다)</div>
+        <label class="btn" for="fileInput">이미지 선택</label>
+        <input type="file" id="fileInput" accept="image/*" />
+      </div>
+      <div id="stageWrap" hidden>
+        <div class="canvas-stage" id="stage">
+          <canvas id="imgCanvas" class="base-layer"></canvas>
+          <canvas id="overlayCanvas"></canvas>
+          <canvas id="drawCanvas"></canvas>
+        </div>
+        <div class="hint-bar" id="hintBar"></div>
+        <div class="legend">
+          <span><i style="background:var(--band);"></i>5–15mm 분석 구간</span>
+          <span><i style="background:var(--plate);"></i>석출(임계값 이상/이하) 판정 영역</span>
+          <span><i style="background:var(--correct);"></i>보정(제외)한 영역</span>
+        </div>
+        <div class="toolrow" id="cropToolrow" hidden>
+          <button class="btn small" id="btnCropConfirm" disabled>자르기 확정</button>
+          <button class="btn ghost small" id="btnCropSkip">전체 이미지 사용</button>
+        </div>
+        <div class="toolrow" id="pointsToolrow" hidden>
+          <button class="btn ghost small" id="btnRedoCrop">이미지 다시 자르기</button>
+          <button class="btn ghost small" id="btnRedoPoints">① ② 지점 다시 찍기</button>
+          <button class="btn ghost small" id="btnDownloadImage">이미지 다운로드</button>
+          <button class="btn ghost small" id="btnNewImage">새 이미지 업로드</button>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel" id="thresholdPanel" hidden>
+        <h2>③ 임계값 설정</h2>
+        <div class="toggle-row">
+          <button class="toggle-btn active" id="btnBright">밝은 부분 = 석출부</button>
+          <button class="toggle-btn" id="btnDark">어두운 부분 = 석출부</button>
+        </div>
+        <div class="slider-row">
+          <input type="range" id="thresholdSlider" min="0" max="255" value="128" />
+          <div class="slider-readout">
+            <span>0</span>
+            <span>Threshold = <b id="thresholdVal">128</b></span>
+            <span>255</span>
+          </div>
+        </div>
+        <div class="toolrow">
+          <button class="btn ghost small" id="btnOtsu">Otsu 자동 임계값 적용</button>
+        </div>
+      </div>
+
+      <div class="panel" id="correctPanel" hidden>
+        <h2>④ 보정 (과민하게 잡힌 부분 지우기)</h2>
+        <div class="toggle-row">
+          <button class="toggle-btn active" id="btnPaintOff">보정 안 함</button>
+          <button class="toggle-btn" id="btnPaintExclude">칠해서 제외</button>
+          <button class="toggle-btn" id="btnPaintInclude">칠해서 되돌리기</button>
+        </div>
+        <div class="slider-row">
+          <input type="range" id="brushSize" min="4" max="40" value="14" />
+          <div class="slider-readout">
+            <span>가늘게</span>
+            <span>브러시 크기 = <b id="brushSizeVal">14</b>px</span>
+            <span>굵게</span>
+          </div>
+        </div>
+        <div class="toolrow">
+          <button class="btn ghost small" id="btnClearPaint">보정 전부 취소</button>
+        </div>
+        <div class="r-sub" style="margin-top:8px;">이미지 위에서 직접 드래그해 칠하면, 그 영역은 석출부 계산에서 제외됩니다(분석 구간 자체는 그대로 유지).</div>
+      </div>
+
+      <div class="panel">
+        <h2>결과</h2>
+        <div class="result-grid" id="resultGrid">
+          <div class="result-card pending">
+            <div class="r-label">ROI 면적률 (ImageJ Threshold)</div>
+            <div class="r-value" id="outPercent">—</div>
+            <div class="r-sub" id="outPixels">이미지 업로드 후 3단계를 완료하면 계산됩니다</div>
+          </div>
+          <div class="result-card pending">
+            <div class="r-label">E81C (현재 이미지)</div>
+            <div class="r-value" id="outE81C">—</div>
+            <div class="formula-line" id="outFormula">E81C = (958 × 면적률) / 30656</div>
+          </div>
+          <div class="result-card" id="slotCard">
+            <div class="r-label">이미지 2장(양면 등)일 때 값 합산</div>
+            <div class="slot-row" id="slotRow1">
+              <span class="slot-name">이미지 ①</span>
+              <span class="slot-value" id="slot1Value">—</span>
+              <button class="btn ghost small" id="btnSaveSlot1">현재 결과 저장</button>
+            </div>
+            <div class="slot-row" id="slotRow2">
+              <span class="slot-name">이미지 ②</span>
+              <span class="slot-value" id="slot2Value">—</span>
+              <button class="btn ghost small" id="btnSaveSlot2">현재 결과 저장</button>
+            </div>
+            <div class="r-sub">한 장만 쓰면 슬롯을 건드리지 않아도 됩니다. 두 장이면 각각 저장 후 아래 최종값이 자동으로 합산됩니다.</div>
+            <button class="btn ghost small" id="btnResetSlots" style="margin-top:8px;">슬롯 초기화</button>
+          </div>
+
+          <div class="result-card hero pending" id="finalCard">
+            <div class="r-label" id="finalLabel">최종값</div>
+            <div class="r-value" id="outFinal">—</div>
+            <div class="r-sub" id="finalSub">이미지 1장이면 그 값, 슬롯 ①·②를 모두 채우면 합계가 표시됩니다</div>
+          </div>
+
+          <div class="result-card">
+            <div class="r-label">E69B (추가 예정)</div>
+            <div class="e69b-input">
+              <input type="text" id="e69bManual" placeholder="공식 확정 전까지 수동 입력 가능" />
+            </div>
+            <div class="r-sub">공식과 값을 알려주시면 자동 계산으로 반영하겠습니다</div>
+          </div>
+        </div>
+
+        <div class="save-row" id="saveRow" hidden>
+          <div class="inline-form">
+            <div class="field">
+              <label>셀 ID</label>
+              <input type="text" id="cellIdInput" placeholder="예: A12-034" />
+            </div>
+            <button class="btn small" id="btnSaveLog">기록에 저장</button>
+          </div>
+          <div class="save-hint" id="saveHint">이 브라우저에만 저장됩니다(다른 기기·다른 사람과 공유되지 않음). 셀 ID를 입력하고 저장하면 "측정 기록" 탭에 쌓입니다.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <div id="logView" hidden>
+    <div class="panel">
+      <div class="log-toolbar">
+        <h2 style="margin:0;">측정 기록</h2>
+        <span class="log-count" id="logCount"></span>
+      </div>
+      <div class="r-sub" style="margin-bottom:12px;">이 목록은 지금 이 브라우저에만 저장됩니다. 브라우저 데이터를 지우면 함께 사라집니다.</div>
+      <div id="logGrid" class="log-grid"></div>
+      <div class="log-empty" id="logEmpty" hidden>아직 저장된 기록이 없습니다. 계산기 탭에서 값을 구한 뒤 저장해보세요.</div>
+    </div>
+  </div>
+
+  <footer>
+    임계값은 ROI(5–15mm 구간) 내부 픽셀의 그레이스케일 히스토그램에 Otsu 알고리즘을 적용해 자동 계산되며, 슬라이더로 직접 조정할 수 있습니다.
+    큰 이미지는 처리 성능을 위해 내부적으로 최대 1600px 폭으로 축소해 분석합니다(축척은 그에 맞게 자동 보정됨). 결과는 참고용이며, 실제 판정 기준은 사내 QC 규정을 따르세요.
+  </footer>
+</div>
+
+
+<script>
+(function(){
+  var VIEW_MAX_W = 720;
+  var PROC_MAX_W = 1600;
+
+  var els = {
+    steps: document.getElementById('steps'),
+    uploadWrap: document.getElementById('uploadWrap'),
+    fileInput: document.getElementById('fileInput'),
+    stageWrap: document.getElementById('stageWrap'),
+    stage: document.getElementById('stage'),
+    imgCanvas: document.getElementById('imgCanvas'),
+    overlayCanvas: document.getElementById('overlayCanvas'),
+    drawCanvas: document.getElementById('drawCanvas'),
+    hintBar: document.getElementById('hintBar'),
+    cropToolrow: document.getElementById('cropToolrow'),
+    btnCropConfirm: document.getElementById('btnCropConfirm'),
+    btnCropSkip: document.getElementById('btnCropSkip'),
+    pointsToolrow: document.getElementById('pointsToolrow'),
+    btnRedoCrop: document.getElementById('btnRedoCrop'),
+    btnRedoPoints: document.getElementById('btnRedoPoints'),
+    btnDownloadImage: document.getElementById('btnDownloadImage'),
+    btnNewImage: document.getElementById('btnNewImage'),
+    thresholdPanel: document.getElementById('thresholdPanel'),
+    btnBright: document.getElementById('btnBright'),
+    btnDark: document.getElementById('btnDark'),
+    thresholdSlider: document.getElementById('thresholdSlider'),
+    thresholdVal: document.getElementById('thresholdVal'),
+    btnOtsu: document.getElementById('btnOtsu'),
+    outPercent: document.getElementById('outPercent'),
+    outPixels: document.getElementById('outPixels'),
+    outE81C: document.getElementById('outE81C'),
+    outFormula: document.getElementById('outFormula'),
+    e69bManual: document.getElementById('e69bManual'),
+    slot1Value: document.getElementById('slot1Value'),
+    slot2Value: document.getElementById('slot2Value'),
+    slotRow1: document.getElementById('slotRow1'),
+    slotRow2: document.getElementById('slotRow2'),
+    btnSaveSlot1: document.getElementById('btnSaveSlot1'),
+    btnSaveSlot2: document.getElementById('btnSaveSlot2'),
+    btnResetSlots: document.getElementById('btnResetSlots'),
+    finalLabel: document.getElementById('finalLabel'),
+    outFinal: document.getElementById('outFinal'),
+    finalSub: document.getElementById('finalSub'),
+    tabCalc: document.getElementById('tabCalc'),
+    tabLog: document.getElementById('tabLog'),
+    calcView: document.getElementById('calcView'),
+    logView: document.getElementById('logView'),
+    logCountBadge: document.getElementById('logCountBadge'),
+    logCount: document.getElementById('logCount'),
+    logGrid: document.getElementById('logGrid'),
+    logEmpty: document.getElementById('logEmpty'),
+    saveRow: document.getElementById('saveRow'),
+    saveHint: document.getElementById('saveHint'),
+    cellIdInput: document.getElementById('cellIdInput'),
+    btnSaveLog: document.getElementById('btnSaveLog'),
+    correctPanel: document.getElementById('correctPanel'),
+    btnPaintOff: document.getElementById('btnPaintOff'),
+    btnPaintExclude: document.getElementById('btnPaintExclude'),
+    btnPaintInclude: document.getElementById('btnPaintInclude'),
+    brushSize: document.getElementById('brushSize'),
+    brushSizeVal: document.getElementById('brushSizeVal'),
+    btnClearPaint: document.getElementById('btnClearPaint')
+  };
+
+  var STEP_DEFS = [
+    {key:'crop', label:'이미지 자르기'},
+    {key:'p5', label:'5mm 지점 클릭'},
+    {key:'p15', label:'15mm 지점 클릭'},
+    {key:'threshold', label:'임계값 조정'},
+    {key:'result', label:'결과 확인'}
+  ];
+  var state = 'idle'; // idle -> crop -> pick_5 -> pick_15 -> ready
+  var img = null;
+  var viewW=0, viewH=0, procW=0, procH=0, procScale=1;
+  var procCtx=null, grayArr=null;
+  var cropped = false;
+  var cropDragging=false, cropDragStart=null, cropRectView=null;
+  var p5View=null, p15View=null; // points clicked on the ruler, view-space
+  var axis=null; // {A,B,mmPerPx} in proc-space, A=5mm point, B=15mm point
+  var bandMask=null, bandTotal=0;
+  var brightMode = true;
+  var currentThreshold = 128;
+  var lastResult=null;
+  var slot1=null, slot2=null;
+  var excludeMask=null;
+  var paintMode='off'; // 'off' | 'exclude' | 'include'
+  var paintDragging=false;
+  var LS_KEY='e81c_measurements_v1';
+  var lastCropRect=null; // {sx,sy,sw,sh} in the ORIGINAL image's own pixel coordinates
+
+  function renderSteps(){
+    var doneKeys = [];
+    if(state !== 'crop' && img) doneKeys.push('crop');
+    if(p5View) doneKeys.push('p5');
+    if(axis) doneKeys.push('p15');
+    if(axis) doneKeys.push('threshold');
+    if(axis) doneKeys.push('result');
+    var activeKey = state === 'crop' ? 'crop' : (!p5View ? 'p5' : (!axis ? 'p15' : 'threshold'));
+    els.steps.innerHTML = STEP_DEFS.map(function(s, i){
+      var cls = 'step-chip';
+      if(s.key === activeKey) cls += ' active';
+      else if(doneKeys.indexOf(s.key) !== -1) cls += ' done';
+      return '<div class="' + cls + '"><span class="n">' + (i+1) + '</span>' + s.label + '</div>';
+    }).join('');
+  }
+
+  function setHint(text, warn){
+    els.hintBar.textContent = text;
+    els.hintBar.className = 'hint-bar' + (warn ? ' warn' : '');
+  }
+
+  function toGray(r,g,b){ return (0.299*r + 0.587*g + 0.114*b); }
+
+  els.fileInput.addEventListener('change', function(e){
+    var file = e.target.files && e.target.files[0];
+    if(!file) return;
+    loadImageFile(file);
+  });
+
+  function loadImageFile(file){
+    var url = URL.createObjectURL(file);
+    var im = new Image();
+    im.onload = function(){ loadImage(im); URL.revokeObjectURL(url); };
+    im.src = url;
+  }
+
+  document.addEventListener('paste', function(e){
+    var items = e.clipboardData && e.clipboardData.items;
+    if(!items) return;
+    for(var i=0;i<items.length;i++){
+      if(items[i].type && items[i].type.indexOf('image') !== -1){
+        var file = items[i].getAsFile();
+        if(file){ loadImageFile(file); e.preventDefault(); }
+        break;
+      }
+    }
+  });
+
+  // sx,sy,sw,sh are in the ORIGINAL image's own pixel coordinates
+  function setupCanvases(sx, sy, sw, sh){
+    lastCropRect = {sx:sx, sy:sy, sw:sw, sh:sh};
+    viewW = Math.max(1, Math.round(Math.min(VIEW_MAX_W, sw)));
+    viewH = Math.max(1, Math.round(sh * (viewW/sw)));
+    procW = Math.max(1, Math.round(Math.min(PROC_MAX_W, sw)));
+    procH = Math.max(1, Math.round(sh * (procW/sw)));
+    procScale = procW / viewW;
+
+    [els.imgCanvas, els.overlayCanvas, els.drawCanvas].forEach(function(c){
+      c.width = viewW; c.height = viewH;
+    });
+    els.stage.style.aspectRatio = viewW + ' / ' + viewH;
+
+    var ictx = els.imgCanvas.getContext('2d');
+    ictx.clearRect(0,0,viewW,viewH);
+    ictx.drawImage(img, sx, sy, sw, sh, 0, 0, viewW, viewH);
+
+    var proc = document.createElement('canvas');
+    proc.width = procW; proc.height = procH;
+    procCtx = proc.getContext('2d', {willReadFrequently:true});
+    procCtx.drawImage(img, sx, sy, sw, sh, 0, 0, procW, procH);
+    var data = procCtx.getImageData(0,0,procW,procH).data;
+    grayArr = new Uint8ClampedArray(procW*procH);
+    for(var i=0,p=0; i<data.length; i+=4, p++){
+      grayArr[p] = toGray(data[i], data[i+1], data[i+2]);
+    }
+    excludeMask = new Uint8Array(procW*procH);
+  }
+
+  function loadImage(im){
+    img = im;
+    cropped = false;
+    cropRectView = null;
+    setupCanvases(0, 0, im.naturalWidth, im.naturalHeight);
+
+    p5View = null; p15View = null; axis = null; bandMask = null;
+    els.uploadWrap.hidden = true;
+    els.stageWrap.hidden = false;
+    els.thresholdPanel.hidden = true;
+    els.correctPanel.hidden = true;
+    setPaintMode('off');
+    els.pointsToolrow.hidden = true;
+    els.cropToolrow.hidden = false;
+    els.btnCropConfirm.disabled = true;
+    clearOverlay();
+    clearDraw();
+    resetResults();
+    state = 'crop';
+    setHint('1단계: 분석할 영역을 마우스로 드래그해서 잘라내세요. 자를 필요가 없으면 "전체 이미지 사용"을 누르세요.');
+    renderSteps();
+  }
+
+  function beginCropMode(){
+    setupCanvases(0, 0, img.naturalWidth, img.naturalHeight);
+    cropRectView = null;
+    p5View = null; p15View = null; axis = null; bandMask = null;
+    els.thresholdPanel.hidden = true;
+    els.correctPanel.hidden = true;
+    setPaintMode('off');
+    els.pointsToolrow.hidden = true;
+    els.cropToolrow.hidden = false;
+    els.btnCropConfirm.disabled = true;
+    clearOverlay();
+    clearDraw();
+    resetResults();
+    state = 'crop';
+    setHint('분석할 영역을 마우스로 드래그해서 잘라내세요. 자를 필요가 없으면 "전체 이미지 사용"을 누르세요.');
+    renderSteps();
+  }
+
+  function finishCrop(){
+    var nw = img.naturalWidth, nh = img.naturalHeight;
+    var origScale = nw / viewW; // view was drawn from the currently-uncropped source at this scale
+    var sx, sy, sw, sh;
+    if(cropRectView){
+      sx = cropRectView.x * origScale;
+      sy = cropRectView.y * origScale;
+      sw = cropRectView.w * origScale;
+      sh = cropRectView.h * origScale;
+      cropped = true;
+    } else {
+      sx = 0; sy = 0; sw = nw; sh = nh;
+      cropped = false;
+    }
+    setupCanvases(sx, sy, sw, sh);
+    p5View = null; p15View = null; axis = null; bandMask = null;
+    els.cropToolrow.hidden = true;
+    els.pointsToolrow.hidden = false;
+    els.correctPanel.hidden = true;
+    setPaintMode('off');
+    clearOverlay();
+    clearDraw();
+    resetResults();
+    state = 'pick_5';
+    setHint('2단계: 이미지 속 눈금자에서 5mm 눈금 위치를 클릭하세요.');
+    renderSteps();
+  }
+
+  function drawCropRect(rect){
+    var ctx = els.drawCanvas.getContext('2d');
+    ctx.clearRect(0,0,viewW,viewH);
+    if(!rect) return;
+    ctx.save();
+    ctx.fillStyle = 'rgba(10,14,16,0.5)';
+    ctx.fillRect(0,0,viewW,viewH);
+    ctx.clearRect(rect.x, rect.y, rect.w, rect.h);
+    ctx.strokeStyle = '#1E6E7A';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6,4]);
+    ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+    ctx.restore();
+  }
+
+  els.btnCropConfirm.addEventListener('click', finishCrop);
+  els.btnCropSkip.addEventListener('click', function(){ cropRectView = null; finishCrop(); });
+  els.btnRedoCrop.addEventListener('click', beginCropMode);
+
+  function localPointFromEvent(e){
+    var rect = els.drawCanvas.getBoundingClientRect();
+    var x = (e.clientX - rect.left) * (viewW/rect.width);
+    var y = (e.clientY - rect.top) * (viewH/rect.height);
+    x = Math.max(0, Math.min(viewW, x));
+    y = Math.max(0, Math.min(viewH, y));
+    return {x:x, y:y};
+  }
+
+  function toProc(pt){ return {x: pt.x*procScale, y: pt.y*procScale}; }
+
+  function clearDraw(){
+    var ctx = els.drawCanvas.getContext('2d');
+    ctx.clearRect(0,0,viewW,viewH);
+    if(p5View && p15View) drawLine(ctx, p5View, p15View, '#3466C9', 2);
+    if(p5View) drawPoint(ctx, p5View, '#1E9E8F', '5mm');
+    if(p15View) drawPoint(ctx, p15View, '#D4372F', '15mm');
+  }
+
+  function drawLine(ctx, p1, p2, color, width){
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.stroke();
+  }
+
+  function drawPoint(ctx, p, color, label){
+    ctx.beginPath();
+    ctx.fillStyle = color;
+    ctx.arc(p.x, p.y, 5, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.font = '600 11px "IBM Plex Mono", monospace';
+    ctx.fillStyle = color;
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(label, p.x + 8, p.y - 6);
+  }
+
+  function clearOverlay(){
+    var ctx = els.overlayCanvas.getContext('2d');
+    ctx.clearRect(0,0,viewW,viewH);
+  }
+
+  var SNAP_TOLERANCE_DEG = 4;
+  function snapToStraight(base, raw){
+    var dx = raw.x-base.x, dy = raw.y-base.y;
+    var dist = Math.hypot(dx,dy);
+    if(dist < 1) return raw;
+    var deg = Math.atan2(dy,dx) * 180/Math.PI;
+    var norm = ((deg % 360) + 360) % 360;
+    var candidates = [0,45,90,135,180,225,270,315,360];
+    var nearest = candidates[0], diff = 999;
+    candidates.forEach(function(c){
+      var d = Math.abs(norm-c);
+      if(d < diff){ diff = d; nearest = c; }
+    });
+    if(diff > SNAP_TOLERANCE_DEG) return raw;
+    var rad = nearest * Math.PI/180;
+    return {x: base.x + dist*Math.cos(rad), y: base.y + dist*Math.sin(rad)};
+  }
+
+  function normalizeRect(a, b){
+    var x = Math.min(a.x,b.x), y = Math.min(a.y,b.y);
+    var w = Math.abs(a.x-b.x), h = Math.abs(a.y-b.y);
+    return {x:x,y:y,w:w,h:h};
+  }
+
+  function paintCircle(viewPt, value){
+    var p = toProc(viewPt);
+    var rProc = parseInt(els.brushSize.value, 10) * procScale;
+    var r2 = rProc*rProc;
+    var minX = Math.max(0, Math.floor(p.x-rProc)), maxX = Math.min(procW-1, Math.ceil(p.x+rProc));
+    var minY = Math.max(0, Math.floor(p.y-rProc)), maxY = Math.min(procH-1, Math.ceil(p.y+rProc));
+    for(var y=minY; y<=maxY; y++){
+      for(var x=minX; x<=maxX; x++){
+        var dx=x-p.x, dy=y-p.y;
+        if(dx*dx+dy*dy <= r2){ excludeMask[y*procW+x] = value; }
+      }
+    }
+  }
+
+  function setPaintMode(m){
+    paintMode = m;
+    els.btnPaintOff.classList.toggle('active', m === 'off');
+    els.btnPaintExclude.classList.toggle('active', m === 'exclude');
+    els.btnPaintInclude.classList.toggle('active', m === 'include');
+  }
+  els.btnPaintOff.addEventListener('click', function(){ setPaintMode('off'); });
+  els.btnPaintExclude.addEventListener('click', function(){ setPaintMode('exclude'); });
+  els.btnPaintInclude.addEventListener('click', function(){ setPaintMode('include'); });
+  els.brushSize.addEventListener('input', function(){ els.brushSizeVal.textContent = els.brushSize.value; });
+  els.btnClearPaint.addEventListener('click', function(){
+    if(excludeMask) excludeMask.fill(0);
+    recompute();
+  });
+
+  els.drawCanvas.addEventListener('pointermove', function(e){
+    if(state === 'ready' && paintMode !== 'off' && paintDragging){
+      paintCircle(localPointFromEvent(e), paintMode === 'exclude' ? 1 : 0);
+      recompute();
+      return;
+    }
+    if(state === 'crop' && cropDragging){
+      cropRectView = normalizeRect(cropDragStart, localPointFromEvent(e));
+      drawCropRect(cropRectView);
+      return;
+    }
+    if(state !== 'pick_15' || !p5View) return;
+    var pt = snapToStraight(p5View, localPointFromEvent(e));
+    clearDraw();
+    var ctx = els.drawCanvas.getContext('2d');
+    drawLine(ctx, p5View, pt, '#3466C9', 1.5);
+    drawPoint(ctx, pt, '#D4372F', '15mm');
+  });
+
+  els.drawCanvas.addEventListener('pointerdown', function(e){
+    e.preventDefault();
+    var pt = localPointFromEvent(e);
+    if(state === 'ready' && paintMode !== 'off'){
+      paintDragging = true;
+      paintCircle(pt, paintMode === 'exclude' ? 1 : 0);
+      recompute();
+      return;
+    }
+    if(state === 'crop'){
+      cropDragging = true;
+      cropDragStart = pt;
+      cropRectView = null;
+      drawCropRect(null);
+      els.btnCropConfirm.disabled = true;
+    } else if(state === 'pick_5'){
+      p5View = pt;
+      clearDraw();
+      state = 'pick_15';
+      setHint('3단계: 같은 눈금자에서 15mm 눈금 위치를 클릭하세요. 5mm 지점과 수평·수직·대각선에 가까우면 자동으로 일직선에 맞춰집니다.');
+      renderSteps();
+    } else if(state === 'pick_15'){
+      p15View = snapToStraight(p5View, pt);
+      clearDraw();
+      var A = toProc(p5View), B = toProc(p15View);
+      var lenProc = Math.hypot(B.x-A.x, B.y-A.y);
+      if(lenProc < 0.5){
+        setHint('두 지점이 같은 위치입니다. 15mm 지점을 5mm 지점과 다른 곳에 다시 클릭해주세요.', true);
+        p15View = null;
+        clearDraw();
+        return;
+      }
+      axis = {A:A, B:B, mmPerPx: 10/lenProc};
+      try{
+        computeBand();
+        state = 'ready';
+        els.thresholdPanel.hidden = false;
+        els.correctPanel.hidden = false;
+        setHint('완료! 아래(또는 오른쪽)에서 임계값을 확인/조정하세요. Otsu 자동 임계값이 기본 적용되었습니다.');
+        renderSteps();
+        setTimeout(function(){
+          els.thresholdPanel.scrollIntoView({behavior:'smooth', block:'center'});
+        }, 50);
+      }catch(err){
+        setHint('계산 중 오류가 발생했습니다: ' + (err && err.message ? err.message : err) + ' — 지점을 다시 찍어주세요.', true);
+        p5View = null; p15View = null; axis = null;
+        els.correctPanel.hidden = true;
+        setPaintMode('off');
+        clearDraw();
+        state = 'pick_5';
+        renderSteps();
+      }
+    }
+  });
+
+  window.addEventListener('pointerup', function(){
+    paintDragging = false;
+    if(!cropDragging) return;
+    cropDragging = false;
+    if(cropRectView && (cropRectView.w < 20 || cropRectView.h < 20)){
+      cropRectView = null;
+      drawCropRect(null);
+      els.btnCropConfirm.disabled = true;
+      setHint('선택 영역이 너무 작습니다. 다시 드래그해주세요.', true);
+    } else if(cropRectView){
+      els.btnCropConfirm.disabled = false;
+      setHint('선택한 영역으로 자르려면 "자르기 확정"을, 다시 그리려면 이미지를 다시 드래그하세요.');
+    }
+  });
+
+  els.btnRedoPoints.addEventListener('click', function(){
+    p5View = null; p15View = null; axis = null; bandMask = null;
+    els.thresholdPanel.hidden = true;
+    els.correctPanel.hidden = true;
+    setPaintMode('off');
+    clearOverlay(); clearDraw(); resetResults();
+    state = 'pick_5';
+    setHint('이미지 속 눈금자에서 5mm 눈금 위치를 클릭하세요.');
+    renderSteps();
+  });
+
+  els.btnNewImage.addEventListener('click', function(){
+    img = null; cropped = false; cropRectView = null;
+    p5View = null; p15View = null; axis = null; bandMask = null;
+    els.stageWrap.hidden = true;
+    els.uploadWrap.hidden = false;
+    els.fileInput.value = '';
+    resetResults();
+    renderSteps();
+  });
+
+  function downloadImage(){
+    if(!img || !lastCropRect) return;
+    var r = lastCropRect;
+    var w = Math.max(1, Math.round(r.sw)), h = Math.max(1, Math.round(r.sh));
+    var full = document.createElement('canvas');
+    full.width = w; full.height = h;
+    full.getContext('2d').drawImage(img, r.sx, r.sy, r.sw, r.sh, 0, 0, w, h);
+    full.toBlob(function(blob){
+      if(!blob) return;
+      var filename = 'e81c-image-' + Date.now() + '.png';
+      saveBlob(blob, filename);
+    }, 'image/png');
+  }
+
+  function saveBlob(blob, filename){
+    if(window.claude && typeof window.claude.use === 'function'){
+      window.claude.use('downloads').then(function(dl){
+        if(!dl){ saveBlobFallback(blob, filename); return; }
+        dl.save({filename: filename, data: blob}).catch(function(err){
+          if(err && (err.code === 'unavailable' || err.code === 'capability_disabled' || err.code === 'not_granted')){
+            saveBlobFallback(blob, filename);
+          }
+        });
+      }).catch(function(){ saveBlobFallback(blob, filename); });
+    } else {
+      saveBlobFallback(blob, filename);
+    }
+  }
+
+  function downloadDataUrl(dataUrl, filename){
+    fetch(dataUrl).then(function(res){ return res.blob(); }).then(function(blob){
+      saveBlob(blob, filename);
+    }).catch(function(){});
+  }
+
+  function saveBlobFallback(blob, filename){
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+  }
+
+  els.btnDownloadImage.addEventListener('click', downloadImage);
+
+  function computeBand(){
+    var A = axis.A, B = axis.B, mmPerPx = axis.mmPerPx;
+    var abx = B.x-A.x, aby = B.y-A.y;
+    var abLen2 = abx*abx + aby*aby;
+    var idxList = [];
+    for(var y=0; y<procH; y++){
+      for(var x=0; x<procW; x++){
+        var dx = x - A.x, dy = y - A.y;
+        var t = (dx*abx + dy*aby) / abLen2;
+        if(t >= 0 && t <= 1){ idxList.push(y*procW + x); }
+      }
+    }
+    bandTotal = idxList.length;
+
+    if(bandTotal === 0){
+      setHint('5mm~15mm 구간이 이미지 범위를 벗어났습니다. 지점을 다시 찍어주세요.', true);
+      els.btnRedoPoints.click();
+      return;
+    }
+
+    bandMask = new Uint32Array(idxList);
+
+    var hist = new Array(256).fill(0);
+    for(var k=0;k<bandTotal;k++){ hist[grayArr[bandMask[k]]]++; }
+    var otsu = otsuThreshold(hist, bandTotal);
+    currentThreshold = otsu;
+    els.thresholdSlider.value = otsu;
+    els.thresholdVal.textContent = otsu;
+    recompute();
+  }
+
+  function otsuThreshold(hist, total){
+    var sum = 0;
+    for(var t=0;t<256;t++) sum += t*hist[t];
+    var sumB=0, wB=0, wF=0, varMax=-1, threshold=128;
+    for(var t=0;t<256;t++){
+      wB += hist[t];
+      if(wB===0) continue;
+      wF = total - wB;
+      if(wF===0) break;
+      sumB += t*hist[t];
+      var mB = sumB/wB, mF = (sum-sumB)/wF;
+      var between = wB*wF*(mB-mF)*(mB-mF);
+      if(between > varMax){ varMax = between; threshold = t; }
+    }
+    return threshold;
+  }
+
+  function recompute(){
+    if(!bandMask || bandTotal===0) return;
+    var overlay = new Uint8ClampedArray(procW*procH*4);
+    var plated = 0;
+    for(var k=0;k<bandTotal;k++){
+      var idx = bandMask[k];
+      var g = grayArr[idx];
+      var excluded = excludeMask && excludeMask[idx];
+      var isPlated = excluded ? false : (brightMode ? (g >= currentThreshold) : (g <= currentThreshold));
+      var o = idx*4;
+      if(excluded){
+        overlay[o]=139; overlay[o+1]=151; overlay[o+2]=160; overlay[o+3]=140;
+      } else if(isPlated){
+        plated++;
+        overlay[o]=212; overlay[o+1]=55; overlay[o+2]=47; overlay[o+3]=150;
+      } else {
+        overlay[o]=216; overlay[o+1]=154; overlay[o+2]=31; overlay[o+3]=60;
+      }
+    }
+    var maskCanvas = document.createElement('canvas');
+    maskCanvas.width = procW; maskCanvas.height = procH;
+    var mctx = maskCanvas.getContext('2d');
+    mctx.putImageData(new ImageData(overlay, procW, procH), 0, 0);
+
+    var octx = els.overlayCanvas.getContext('2d');
+    octx.clearRect(0,0,viewW,viewH);
+    octx.drawImage(maskCanvas, 0,0,procW,procH, 0,0,viewW,viewH);
+
+    var excludedCount = 0;
+    for(var k2=0;k2<bandTotal;k2++){ if(excludeMask && excludeMask[bandMask[k2]]) excludedCount++; }
+    var percent = (plated/bandTotal)*100;
+    els.outPercent.textContent = percent.toFixed(2) + '%';
+    els.outPixels.textContent = plated.toLocaleString() + ' / ' + bandTotal.toLocaleString() + ' px (ROI 내부 기준)' +
+      (excludedCount > 0 ? ' · 보정 제외 ' + excludedCount.toLocaleString() + 'px' : '');
+    els.outPercent.parentElement.classList.remove('pending');
+
+    var e81c = (958 * percent) / 30656;
+    els.outE81C.textContent = e81c.toFixed(4);
+    els.outFormula.textContent = 'E81C = (958 × ' + percent.toFixed(2) + ') / 30656 = ' + e81c.toFixed(4);
+    els.outE81C.parentElement.classList.remove('pending');
+
+    lastResult = {percent: percent, e81c: e81c, threshold: currentThreshold, brightMode: brightMode};
+    els.saveRow.hidden = false;
+    renderFinal();
+  }
+
+  function getFinalValue(){
+    if(slot1 || slot2){
+      var percent = (slot1?slot1.percent:0) + (slot2?slot2.percent:0);
+      var e81c = (slot1?slot1.e81c:0) + (slot2?slot2.e81c:0);
+      return {percent:percent, e81c:e81c, isSum: !!(slot1 && slot2), fromSlots:true};
+    }
+    if(lastResult) return {percent:lastResult.percent, e81c:lastResult.e81c, isSum:false, fromSlots:false};
+    return null;
+  }
+
+  function renderFinal(){
+    els.slot1Value.textContent = slot1 ? slot1.e81c.toFixed(4) + ' (' + slot1.percent.toFixed(2) + '%)' : '—';
+    els.slot2Value.textContent = slot2 ? slot2.e81c.toFixed(4) + ' (' + slot2.percent.toFixed(2) + '%)' : '—';
+    els.slotRow1.classList.toggle('filled', !!slot1);
+    els.slotRow2.classList.toggle('filled', !!slot2);
+
+    var fin = getFinalValue();
+    if(!fin){
+      els.outFinal.textContent = '—';
+      els.finalLabel.textContent = '최종값';
+      els.finalSub.textContent = '이미지 1장이면 그 값, 슬롯 ①·②를 모두 채우면 합계가 표시됩니다';
+      els.outFinal.parentElement.classList.add('pending');
+      return;
+    }
+    els.outFinal.parentElement.classList.remove('pending');
+    els.outFinal.textContent = fin.e81c.toFixed(4);
+    if(fin.fromSlots){
+      els.finalLabel.textContent = fin.isSum ? 'E81C 합계 (이미지 ① + ②)' : 'E81C (슬롯에 저장된 값)';
+      els.finalSub.textContent = fin.isSum
+        ? '① ' + slot1.e81c.toFixed(4) + ' + ② ' + slot2.e81c.toFixed(4) + ' = ' + fin.e81c.toFixed(4)
+        : '나머지 한 슬롯을 채우면 합계로 자동 갱신됩니다';
+    } else {
+      els.finalLabel.textContent = 'E81C (현재 이미지)';
+      els.finalSub.textContent = '이미지가 1장뿐이면 이 값이 최종값입니다';
+    }
+  }
+
+  els.btnSaveSlot1.addEventListener('click', function(){
+    if(!lastResult) return;
+    slot1 = {percent: lastResult.percent, e81c: lastResult.e81c};
+    renderFinal();
+  });
+  els.btnSaveSlot2.addEventListener('click', function(){
+    if(!lastResult) return;
+    slot2 = {percent: lastResult.percent, e81c: lastResult.e81c};
+    renderFinal();
+  });
+  els.btnResetSlots.addEventListener('click', function(){
+    slot1 = null; slot2 = null;
+    renderFinal();
+  });
+
+  function resetResults(){
+    els.outPercent.textContent = '—';
+    els.outPixels.textContent = '이미지 업로드 후 3단계를 완료하면 계산됩니다';
+    els.outPercent.parentElement.classList.add('pending');
+    els.outE81C.textContent = '—';
+    els.outFormula.textContent = 'E81C = (958 × 면적률) / 30656';
+    els.outE81C.parentElement.classList.add('pending');
+    lastResult = null;
+    els.saveRow.hidden = true;
+    renderFinal();
+  }
+
+  els.thresholdSlider.addEventListener('input', function(){
+    currentThreshold = parseInt(els.thresholdSlider.value, 10);
+    els.thresholdVal.textContent = currentThreshold;
+    recompute();
+  });
+
+  els.btnOtsu.addEventListener('click', function(){
+    if(!bandMask) return;
+    var hist = new Array(256).fill(0);
+    for(var k=0;k<bandTotal;k++){ hist[grayArr[bandMask[k]]]++; }
+    var otsu = otsuThreshold(hist, bandTotal);
+    currentThreshold = otsu;
+    els.thresholdSlider.value = otsu;
+    els.thresholdVal.textContent = otsu;
+    recompute();
+  });
+
+  els.btnBright.addEventListener('click', function(){
+    brightMode = true;
+    els.btnBright.classList.add('active');
+    els.btnDark.classList.remove('active');
+    recompute();
+  });
+  els.btnDark.addEventListener('click', function(){
+    brightMode = false;
+    els.btnDark.classList.add('active');
+    els.btnBright.classList.remove('active');
+    recompute();
+  });
+
+  els.tabCalc.addEventListener('click', function(){ showTab('calc'); });
+  els.tabLog.addEventListener('click', function(){ showTab('log'); renderLog(); });
+  function showTab(which){
+    els.calcView.hidden = which !== 'calc';
+    els.logView.hidden = which !== 'log';
+    els.tabCalc.classList.toggle('active', which === 'calc');
+    els.tabLog.classList.toggle('active', which === 'log');
+  }
+
+  function makeThumb(){
+    try{
+      var w = 240, h = Math.round(240 * (viewH/viewW));
+      var t = document.createElement('canvas');
+      t.width = w; t.height = h;
+      t.getContext('2d').drawImage(els.imgCanvas, 0, 0, w, h);
+      return t.toDataURL('image/jpeg', 0.55);
+    }catch(err){ return null; }
+  }
+
+  function fmtTime(iso){
+    try{
+      var d = new Date(iso);
+      return d.getFullYear() + '.' + String(d.getMonth()+1).padStart(2,'0') + '.' + String(d.getDate()).padStart(2,'0') +
+        ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    }catch(err){ return ''; }
+  }
+
+  function loadHistory(){
+    try{ return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); }catch(err){ return []; }
+  }
+  function saveHistoryList(list){
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(list)); return true; }catch(err){ return false; }
+  }
+
+  function renderLog(){
+    var list = loadHistory();
+    els.logCount.textContent = list.length + '건';
+    els.logCountBadge.textContent = list.length ? ' (' + list.length + ')' : '';
+    if(list.length === 0){
+      els.logGrid.innerHTML = '';
+      els.logEmpty.hidden = false;
+      return;
+    }
+    els.logEmpty.hidden = true;
+    els.logGrid.innerHTML = list.map(function(v){
+      var thumbHTML = v.thumb ? '<img class="log-thumb" src="' + v.thumb + '" alt="' + (v.cellId||'') + '" />'
+        : '<div class="log-thumb-empty">이미지 없음</div>';
+      return '<div class="log-card">' +
+        thumbHTML +
+        '<div class="log-body">' +
+          '<div class="log-cellid">' + (v.cellId || '(ID 없음)') + (v.isSum ? '<span class="sum-badge">이미지 2장 합계</span>' : '') + '</div>' +
+          '<div class="log-row"><span>면적률' + (v.isSum?' 합계':'') + '</span><b>' + (typeof v.percent==='number' ? v.percent.toFixed(2)+'%' : '—') + '</b></div>' +
+          '<div class="log-row"><span>E81C' + (v.isSum?' 합계':'') + '</span><b>' + (typeof v.e81c==='number' ? v.e81c.toFixed(4) : '—') + '</b></div>' +
+          (v.e69b ? '<div class="log-row"><span>E69B</span><b>' + v.e69b + '</b></div>' : '') +
+          '<div class="log-time">' + fmtTime(v.createdAt) + '</div>' +
+          '<div class="log-actions">' +
+            (v.thumb ? '<button class="log-download" data-id="' + v.id + '">다운로드</button>' : '') +
+            '<button class="log-del" data-id="' + v.id + '">삭제</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+    Array.prototype.forEach.call(els.logGrid.querySelectorAll('.log-download'), function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-id');
+        var match = loadHistory().filter(function(v){ return v.id === id; })[0];
+        if(!match || !match.thumb) return;
+        downloadDataUrl(match.thumb, 'e81c-' + (match.cellId || id) + '.jpg');
+      });
+    });
+    Array.prototype.forEach.call(els.logGrid.querySelectorAll('.log-del'), function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-id');
+        var next = loadHistory().filter(function(v){ return v.id !== id; });
+        saveHistoryList(next);
+        renderLog();
+      });
+    });
+  }
+
+  els.btnSaveLog.addEventListener('click', function(){
+    var fin = getFinalValue();
+    if(!fin) return;
+    var cellId = els.cellIdInput.value.trim();
+    if(!cellId){ els.cellIdInput.focus(); return; }
+    var rec = {
+      id: Date.now() + '_' + Math.random().toString(36).slice(2),
+      cellId: cellId,
+      percent: fin.percent,
+      e81c: fin.e81c,
+      isSum: fin.isSum,
+      threshold: lastResult ? lastResult.threshold : null,
+      brightMode: lastResult ? lastResult.brightMode : null,
+      e69b: els.e69bManual.value.trim() || null,
+      thumb: makeThumb(),
+      createdAt: new Date().toISOString()
+    };
+    var list = loadHistory();
+    list.unshift(rec);
+    if(list.length > 200) list = list.slice(0, 200);
+    var ok = saveHistoryList(list);
+    if(!ok){
+      rec.thumb = null;
+      list[0] = rec;
+      ok = saveHistoryList(list);
+    }
+    if(ok){
+      els.saveHint.textContent = '이 브라우저에 저장되었습니다. "측정 기록" 탭에서 확인하세요.';
+      els.cellIdInput.value = '';
+      slot1 = null; slot2 = null;
+      renderFinal();
+    } else {
+      els.saveHint.textContent = '저장 공간이 부족합니다. 측정 기록 탭에서 오래된 기록을 삭제해주세요.';
+    }
+  });
+
+  renderSteps();
+})();
+
+</script>
+</body>
+</html>
