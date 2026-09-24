@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>E81C 계산기</title>
+<title>E81C Calculator</title>
 <style>
 :root{
   --paper:#F2F5F6;
@@ -473,22 +473,94 @@ footer{
   line-height:1.6;
 }
 
+.title-row{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:6px;}
+.title-row h1{margin:0;}
+.live-badge{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:4px 10px; border-radius:999px;
+  font-family:'IBM Plex Mono', Consolas, monospace; font-size:11px; font-weight:600;
+  background:var(--surface); color:var(--ink-faint); border:1px solid var(--line);
+}
+.live-badge .dot{width:7px; height:7px; border-radius:50%; background:var(--ink-faint);}
+.live-badge.live{color:var(--ok); border-color:var(--ok);}
+.live-badge.live .dot{background:var(--ok);}
+.live-badge.error{color:var(--plate); border-color:var(--plate);}
+.live-badge.error .dot{background:var(--plate);}
+#signOutBtn{margin-left:auto;}
+.tabs{align-items:center;}
+.tabs-reset{margin-left:auto; margin-bottom:6px;}
+.btn.danger{background:var(--plate-soft); border-color:var(--plate-soft); color:var(--plate);}
+.btn.danger:hover{border-color:var(--plate);}
+.btn.danger:disabled{opacity:0.4;}
+.migrate-banner{
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  background:var(--band-soft); border:1px solid var(--band); border-radius:10px;
+  padding:10px 12px; margin-bottom:16px; font-size:13px; line-height:1.5;
+}
+.migrate-banner[hidden]{display:none;}
+.migrate-banner span{flex:1; min-width:220px;}
+.modal-overlay{
+  position:fixed; inset:0; z-index:100;
+  background:rgba(10,14,16,0.55);
+  display:none; align-items:center; justify-content:center; padding:16px;
+}
+.modal-overlay.open{display:flex;}
+.modal{
+  background:var(--surface); color:var(--ink);
+  border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow);
+  width:100%; max-width:440px; padding:20px;
+}
+.modal h2{font-size:16px; margin:0 0 10px;}
+.modal-text{margin:0 0 12px; line-height:1.55; color:var(--ink-soft);}
+.modal-input{
+  width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px;
+  background:var(--paper); color:var(--ink); font-family:'IBM Plex Mono', Consolas, monospace; font-size:14px;
+}
+.modal-error{min-height:16px; margin-top:8px; font-size:12px; color:var(--plate);}
+.modal-warn{font-size:12px; color:var(--plate); margin:10px 0 6px;}
+.modal-label{display:block; font-size:12px; color:var(--ink-soft); margin-bottom:6px;}
+.modal-actions{display:flex; justify-content:flex-end; gap:8px; margin-top:16px;}
+.reset-option{display:flex; gap:8px; align-items:flex-start; padding:6px 0; line-height:1.45; cursor:pointer;}
+.reset-option input{margin-top:3px;}
+.toast{
+  position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+  background:var(--ink); color:var(--surface); padding:10px 16px; border-radius:8px;
+  font-size:13px; box-shadow:var(--shadow); opacity:0; pointer-events:none;
+  transition:opacity .2s; z-index:200; max-width:calc(100vw - 32px); text-align:center;
+}
+.toast.show{opacity:1;}
+.toast.error{background:var(--plate); color:#fff;}
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js?v=1"></script>
 </head>
 <body>
 <div class="wrap">
-  <div class="eyebrow">리튬 석출 면적 · 배터리 QC</div>
-  <h1>E81C 계산기</h1>
+  <div class="eyebrow">Lithium plating area · Battery QC</div>
+  <div class="title-row">
+    <h1>E81C Calculator</h1>
+    <span class="live-badge connecting" id="liveBadge"><span class="dot"></span><span id="liveBadgeText">Loading</span></span>
+    <button class="btn ghost small" id="signOutBtn" type="button" hidden>Sign out</button>
+  </div>
   <p class="lede">
-    이미지를 올린 뒤 <b>①분석할 영역만 잘라내고 → ②눈금자 위에서 5mm 지점 → ③15mm 지점을 순서대로 클릭</b>하면
-    두 지점 사이가 정확히 10mm라는 사실로 축척과 5–15mm 분석 구간이 한 번에 정해집니다.
-    이어서 ImageJ의 Otsu 자동 임계값 방식과 동일한 알고리즘으로 리튬 석출 면적률(%)을 구하고,
-    <code>E81C = (958 × 면적률) / 30656</code> 공식에 바로 대입한 값을 보여줍니다.
+    Upload an image, then <b>① crop to the area to analyze → ② click the 5mm mark on the ruler → ③ click the 15mm mark</b>.
+    Because those two points are exactly 10mm apart, the scale and the 5–15mm analysis band are set in one step.
+    The lithium plating area ratio (%) is then computed with the same Otsu auto-threshold algorithm as ImageJ
+    and plugged straight into <code>E81C = (958 × area %) / 30656</code>.
   </p>
 
+  <div class="migrate-banner" id="migrateBanner" hidden>
+    <span id="migrateBannerText"></span>
+    <button class="btn small" id="migrateUploadBtn" type="button">Upload to shared database</button>
+    <button class="btn ghost small" id="migrateDismissBtn" type="button">Dismiss</button>
+  </div>
+
   <div class="tabs">
-    <button class="tab-btn active" id="tabCalc">계산기</button>
-    <button class="tab-btn" id="tabLog">측정 기록<span id="logCountBadge"></span></button>
+    <button class="tab-btn active" id="tabCalc">Calculator</button>
+    <button class="tab-btn" id="tabLog">Measurement log<span id="logCountBadge"></span></button>
+    <button class="btn danger small tabs-reset" id="resetBtn" type="button">Reset</button>
   </div>
 
   <div id="calcView">
@@ -496,10 +568,10 @@ footer{
 
   <div class="layout">
     <div class="panel">
-      <h2>작업 이미지</h2>
+      <h2>Working image</h2>
       <div id="uploadWrap" class="upload-zone" tabindex="0">
-        <div style="margin-bottom:10px;">분석할 이미지를 선택하거나, 이 영역을 클릭한 뒤 <b>Ctrl+V</b>로 붙여넣으세요<br/>(눈금자와 전극 표면이 함께 보여야 합니다)</div>
-        <label class="btn" for="fileInput">이미지 선택</label>
+        <div style="margin-bottom:10px;">Choose an image to analyze, or click this area and paste with <b>Ctrl+V</b><br/>(the ruler and the electrode surface must both be visible)</div>
+        <label class="btn" for="fileInput">Choose image</label>
         <input type="file" id="fileInput" accept="image/*" />
       </div>
       <div id="stageWrap" hidden>
@@ -510,29 +582,29 @@ footer{
         </div>
         <div class="hint-bar" id="hintBar"></div>
         <div class="legend">
-          <span><i style="background:var(--band);"></i>5–15mm 분석 구간</span>
-          <span><i style="background:var(--plate);"></i>석출(임계값 이상/이하) 판정 영역</span>
-          <span><i style="background:var(--correct);"></i>보정(제외)한 영역</span>
+          <span><i style="background:var(--band);"></i>5–15mm analysis band</span>
+          <span><i style="background:var(--plate);"></i>Area judged as plating (above/below threshold)</span>
+          <span><i style="background:var(--correct);"></i>Corrected (excluded) area</span>
         </div>
         <div class="toolrow" id="cropToolrow" hidden>
-          <button class="btn small" id="btnCropConfirm" disabled>자르기 확정</button>
-          <button class="btn ghost small" id="btnCropSkip">전체 이미지 사용</button>
+          <button class="btn small" id="btnCropConfirm" disabled>Confirm crop</button>
+          <button class="btn ghost small" id="btnCropSkip">Use whole image</button>
         </div>
         <div class="toolrow" id="pointsToolrow" hidden>
-          <button class="btn ghost small" id="btnRedoCrop">이미지 다시 자르기</button>
-          <button class="btn ghost small" id="btnRedoPoints">① ② 지점 다시 찍기</button>
-          <button class="btn ghost small" id="btnDownloadImage">이미지 다운로드</button>
-          <button class="btn ghost small" id="btnNewImage">새 이미지 업로드</button>
+          <button class="btn ghost small" id="btnRedoCrop">Re-crop image</button>
+          <button class="btn ghost small" id="btnRedoPoints">Re-pick ① ② points</button>
+          <button class="btn ghost small" id="btnDownloadImage">Download image</button>
+          <button class="btn ghost small" id="btnNewImage">Upload new image</button>
         </div>
       </div>
     </div>
 
     <div>
       <div class="panel" id="thresholdPanel" hidden>
-        <h2>③ 임계값 설정</h2>
+        <h2>③ Threshold</h2>
         <div class="toggle-row">
-          <button class="toggle-btn active" id="btnBright">밝은 부분 = 석출부</button>
-          <button class="toggle-btn" id="btnDark">어두운 부분 = 석출부</button>
+          <button class="toggle-btn active" id="btnBright">Bright = plating</button>
+          <button class="toggle-btn" id="btnDark">Dark = plating</button>
         </div>
         <div class="slider-row">
           <input type="range" id="thresholdSlider" min="0" max="255" value="128" />
@@ -543,84 +615,84 @@ footer{
           </div>
         </div>
         <div class="toolrow">
-          <button class="btn ghost small" id="btnOtsu">Otsu 자동 임계값 적용</button>
+          <button class="btn ghost small" id="btnOtsu">Apply Otsu auto threshold</button>
         </div>
       </div>
 
       <div class="panel" id="correctPanel" hidden>
-        <h2>④ 보정 (과민하게 잡힌 부분 지우기)</h2>
+        <h2>④ Correction (erase over-detected areas)</h2>
         <div class="toggle-row">
-          <button class="toggle-btn active" id="btnPaintOff">보정 안 함</button>
-          <button class="toggle-btn" id="btnPaintExclude">칠해서 제외</button>
-          <button class="toggle-btn" id="btnPaintInclude">칠해서 되돌리기</button>
+          <button class="toggle-btn active" id="btnPaintOff">No correction</button>
+          <button class="toggle-btn" id="btnPaintExclude">Paint to exclude</button>
+          <button class="toggle-btn" id="btnPaintInclude">Paint to restore</button>
         </div>
         <div class="slider-row">
           <input type="range" id="brushSize" min="4" max="40" value="14" />
           <div class="slider-readout">
-            <span>가늘게</span>
-            <span>브러시 크기 = <b id="brushSizeVal">14</b>px</span>
-            <span>굵게</span>
+            <span>Thin</span>
+            <span>Brush size = <b id="brushSizeVal">14</b>px</span>
+            <span>Thick</span>
           </div>
         </div>
         <div class="toolrow">
-          <button class="btn ghost small" id="btnClearPaint">보정 전부 취소</button>
+          <button class="btn ghost small" id="btnClearPaint">Undo all corrections</button>
         </div>
-        <div class="r-sub" style="margin-top:8px;">이미지 위에서 직접 드래그해 칠하면, 그 영역은 석출부 계산에서 제외됩니다(분석 구간 자체는 그대로 유지).</div>
+        <div class="r-sub" style="margin-top:8px;">Drag on the image to paint; painted areas are excluded from the plating calculation (the analysis band itself stays the same).</div>
       </div>
 
       <div class="panel">
-        <h2>결과</h2>
+        <h2>Results</h2>
         <div class="result-grid" id="resultGrid">
           <div class="result-card pending">
-            <div class="r-label">ROI 면적률 (ImageJ Threshold)</div>
+            <div class="r-label">ROI area ratio (ImageJ Threshold)</div>
             <div class="r-value" id="outPercent">—</div>
-            <div class="r-sub" id="outPixels">이미지 업로드 후 3단계를 완료하면 계산됩니다</div>
+            <div class="r-sub" id="outPixels">Calculated after you upload an image and finish step 3</div>
           </div>
           <div class="result-card pending">
-            <div class="r-label">E81C (현재 이미지)</div>
+            <div class="r-label">E81C (current image)</div>
             <div class="r-value" id="outE81C">—</div>
-            <div class="formula-line" id="outFormula">E81C = (958 × 면적률) / 30656</div>
+            <div class="formula-line" id="outFormula">E81C = (958 × area %) / 30656</div>
           </div>
           <div class="result-card" id="slotCard">
-            <div class="r-label">이미지 2장(양면 등)일 때 값 합산</div>
+            <div class="r-label">Sum values for 2 images (e.g. both sides)</div>
             <div class="slot-row" id="slotRow1">
-              <span class="slot-name">이미지 ①</span>
+              <span class="slot-name">Image ①</span>
               <span class="slot-value" id="slot1Value">—</span>
-              <button class="btn ghost small" id="btnSaveSlot1">현재 결과 저장</button>
+              <button class="btn ghost small" id="btnSaveSlot1">Save current result</button>
             </div>
             <div class="slot-row" id="slotRow2">
-              <span class="slot-name">이미지 ②</span>
+              <span class="slot-name">Image ②</span>
               <span class="slot-value" id="slot2Value">—</span>
-              <button class="btn ghost small" id="btnSaveSlot2">현재 결과 저장</button>
+              <button class="btn ghost small" id="btnSaveSlot2">Save current result</button>
             </div>
-            <div class="r-sub">한 장만 쓰면 슬롯을 건드리지 않아도 됩니다. 두 장이면 각각 저장 후 아래 최종값이 자동으로 합산됩니다.</div>
-            <button class="btn ghost small" id="btnResetSlots" style="margin-top:8px;">슬롯 초기화</button>
+            <div class="r-sub">With one image you can ignore the slots. With two, save each one and the final value below is summed automatically.</div>
+            <button class="btn ghost small" id="btnResetSlots" style="margin-top:8px;">Clear slots</button>
           </div>
 
           <div class="result-card hero pending" id="finalCard">
-            <div class="r-label" id="finalLabel">최종값</div>
+            <div class="r-label" id="finalLabel">Final value</div>
             <div class="r-value" id="outFinal">—</div>
-            <div class="r-sub" id="finalSub">이미지 1장이면 그 값, 슬롯 ①·②를 모두 채우면 합계가 표시됩니다</div>
+            <div class="r-sub" id="finalSub">Shows the single-image value, or the sum once slots ① and ② are both filled</div>
           </div>
 
           <div class="result-card">
-            <div class="r-label">E69B (추가 예정)</div>
+            <div class="r-label">E69B (coming soon)</div>
             <div class="e69b-input">
-              <input type="text" id="e69bManual" placeholder="공식 확정 전까지 수동 입력 가능" />
+              <input type="text" id="e69bManual" placeholder="Manual entry until the formula is final" />
             </div>
-            <div class="r-sub">공식과 값을 알려주시면 자동 계산으로 반영하겠습니다</div>
+            <div class="r-sub">Automatic calculation will be added once the formula is confirmed</div>
           </div>
         </div>
 
         <div class="save-row" id="saveRow" hidden>
           <div class="inline-form">
             <div class="field">
-              <label>셀 ID</label>
-              <input type="text" id="cellIdInput" placeholder="예: A12-034" />
+              <label>Cell ID</label>
+              <input type="text" id="cellIdInput" placeholder="e.g. A12-034" />
             </div>
-            <button class="btn small" id="btnSaveLog">기록에 저장</button>
+            <button class="btn small" id="btnSaveLog">Save to log</button>
           </div>
-          <div class="save-hint" id="saveHint">이 브라우저에만 저장됩니다(다른 기기·다른 사람과 공유되지 않음). 셀 ID를 입력하고 저장하면 "측정 기록" 탭에 쌓입니다.</div>
+          <div class="save-hint" id="saveHint">Enter a Cell ID and save to add it to the "Measurement log" tab.</div>
         </div>
       </div>
     </div>
@@ -630,21 +702,53 @@ footer{
   <div id="logView" hidden>
     <div class="panel">
       <div class="log-toolbar">
-        <h2 style="margin:0;">측정 기록</h2>
+        <h2 style="margin:0;">Measurement log</h2>
         <span class="log-count" id="logCount"></span>
       </div>
-      <div class="r-sub" style="margin-bottom:12px;">이 목록은 지금 이 브라우저에만 저장됩니다. 브라우저 데이터를 지우면 함께 사라집니다.</div>
+      <div class="r-sub" style="margin-bottom:12px;" id="logStorageNote"></div>
       <div id="logGrid" class="log-grid"></div>
-      <div class="log-empty" id="logEmpty" hidden>아직 저장된 기록이 없습니다. 계산기 탭에서 값을 구한 뒤 저장해보세요.</div>
+      <div class="log-empty" id="logEmpty" hidden>No records yet. Calculate a value in the Calculator tab and save it.</div>
     </div>
   </div>
 
   <footer>
-    임계값은 ROI(5–15mm 구간) 내부 픽셀의 그레이스케일 히스토그램에 Otsu 알고리즘을 적용해 자동 계산되며, 슬라이더로 직접 조정할 수 있습니다.
-    큰 이미지는 처리 성능을 위해 내부적으로 최대 1600px 폭으로 축소해 분석합니다(축척은 그에 맞게 자동 보정됨). 결과는 참고용이며, 실제 판정 기준은 사내 QC 규정을 따르세요.
+    The threshold is computed automatically by applying Otsu's method to the grayscale histogram of pixels inside the ROI (5–15mm band), and can be adjusted with the slider.
+    Large images are downscaled internally to at most 1600px wide for performance (the scale is corrected accordingly). Results are for reference; follow your internal QC rules for final judgment.
   </footer>
 </div>
 
+<!-- Team sign-in (shared database mode) -->
+<div class="modal-overlay" id="loginOverlay">
+  <form class="modal" id="loginForm">
+    <h2>Team sign-in</h2>
+    <p class="modal-text">Enter the team password to view and save the shared measurement log. This browser stays signed in until you sign out.</p>
+    <input type="password" class="modal-input" id="loginPassword" autocomplete="current-password" placeholder="Team password" />
+    <div class="modal-error" id="loginError"></div>
+    <div class="modal-actions">
+      <button class="btn" id="loginBtn" type="submit">Sign in</button>
+    </div>
+  </form>
+</div>
+
+<!-- Reset -->
+<div class="modal-overlay" id="resetOverlay">
+  <div class="modal">
+    <h2>Reset</h2>
+    <label class="reset-option"><input type="radio" name="resetScope" value="calc" checked /> Current calculation only (image, points, threshold, slots, Cell ID)</label>
+    <label class="reset-option"><input type="radio" name="resetScope" value="log" /> <span id="resetLogLabel">Delete all measurement records</span></label>
+    <div id="resetLogConfirm" hidden>
+      <p class="modal-warn">This permanently deletes every record in the measurement log and cannot be undone.</p>
+      <label class="modal-label" for="resetConfirmInput">Type <b>RESET</b> to confirm</label>
+      <input type="text" class="modal-input" id="resetConfirmInput" autocomplete="off" placeholder="RESET" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn ghost" id="resetCancelBtn" type="button">Cancel</button>
+      <button class="btn danger" id="resetConfirmBtn" type="button">Reset</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
 
 <script>
 (function(){
@@ -712,11 +816,11 @@ footer{
   };
 
   var STEP_DEFS = [
-    {key:'crop', label:'이미지 자르기'},
-    {key:'p5', label:'5mm 지점 클릭'},
-    {key:'p15', label:'15mm 지점 클릭'},
-    {key:'threshold', label:'임계값 조정'},
-    {key:'result', label:'결과 확인'}
+    {key:'crop', label:'Crop image'},
+    {key:'p5', label:'Click 5mm mark'},
+    {key:'p15', label:'Click 15mm mark'},
+    {key:'threshold', label:'Adjust threshold'},
+    {key:'result', label:'Check result'}
   ];
   var state = 'idle'; // idle -> crop -> pick_5 -> pick_15 -> ready
   var img = null;
@@ -834,7 +938,7 @@ footer{
     clearDraw();
     resetResults();
     state = 'crop';
-    setHint('1단계: 분석할 영역을 마우스로 드래그해서 잘라내세요. 자를 필요가 없으면 "전체 이미지 사용"을 누르세요.');
+    setHint('Step 1: Drag with the mouse to crop the area to analyze. If no crop is needed, click "Use whole image".');
     renderSteps();
   }
 
@@ -852,7 +956,7 @@ footer{
     clearDraw();
     resetResults();
     state = 'crop';
-    setHint('분석할 영역을 마우스로 드래그해서 잘라내세요. 자를 필요가 없으면 "전체 이미지 사용"을 누르세요.');
+    setHint('Drag with the mouse to crop the area to analyze. If no crop is needed, click "Use whole image".');
     renderSteps();
   }
 
@@ -880,7 +984,7 @@ footer{
     clearDraw();
     resetResults();
     state = 'pick_5';
-    setHint('2단계: 이미지 속 눈금자에서 5mm 눈금 위치를 클릭하세요.');
+    setHint('Step 2: Click the 5mm mark on the ruler in the image.');
     renderSteps();
   }
 
@@ -1041,7 +1145,7 @@ footer{
       p5View = pt;
       clearDraw();
       state = 'pick_15';
-      setHint('3단계: 같은 눈금자에서 15mm 눈금 위치를 클릭하세요. 5mm 지점과 수평·수직·대각선에 가까우면 자동으로 일직선에 맞춰집니다.');
+      setHint('Step 3: Click the 15mm mark on the same ruler. If it is nearly horizontal, vertical or diagonal to the 5mm point, it snaps to a straight line.');
       renderSteps();
     } else if(state === 'pick_15'){
       p15View = snapToStraight(p5View, pt);
@@ -1049,7 +1153,7 @@ footer{
       var A = toProc(p5View), B = toProc(p15View);
       var lenProc = Math.hypot(B.x-A.x, B.y-A.y);
       if(lenProc < 0.5){
-        setHint('두 지점이 같은 위치입니다. 15mm 지점을 5mm 지점과 다른 곳에 다시 클릭해주세요.', true);
+        setHint('Both points are in the same place. Click the 15mm mark somewhere other than the 5mm point.', true);
         p15View = null;
         clearDraw();
         return;
@@ -1060,13 +1164,13 @@ footer{
         state = 'ready';
         els.thresholdPanel.hidden = false;
         els.correctPanel.hidden = false;
-        setHint('완료! 아래(또는 오른쪽)에서 임계값을 확인/조정하세요. Otsu 자동 임계값이 기본 적용되었습니다.');
+        setHint('Done! Check or adjust the threshold below (or on the right). The Otsu auto threshold has been applied.');
         renderSteps();
         setTimeout(function(){
           els.thresholdPanel.scrollIntoView({behavior:'smooth', block:'center'});
         }, 50);
       }catch(err){
-        setHint('계산 중 오류가 발생했습니다: ' + (err && err.message ? err.message : err) + ' — 지점을 다시 찍어주세요.', true);
+        setHint('An error occurred during calculation: ' + (err && err.message ? err.message : err) + ' — please pick the points again.', true);
         p5View = null; p15View = null; axis = null;
         els.correctPanel.hidden = true;
         setPaintMode('off');
@@ -1085,10 +1189,10 @@ footer{
       cropRectView = null;
       drawCropRect(null);
       els.btnCropConfirm.disabled = true;
-      setHint('선택 영역이 너무 작습니다. 다시 드래그해주세요.', true);
+      setHint('The selected area is too small. Please drag again.', true);
     } else if(cropRectView){
       els.btnCropConfirm.disabled = false;
-      setHint('선택한 영역으로 자르려면 "자르기 확정"을, 다시 그리려면 이미지를 다시 드래그하세요.');
+      setHint('Click "Confirm crop" to crop to the selection, or drag on the image again to redraw it.');
     }
   });
 
@@ -1099,7 +1203,7 @@ footer{
     setPaintMode('off');
     clearOverlay(); clearDraw(); resetResults();
     state = 'pick_5';
-    setHint('이미지 속 눈금자에서 5mm 눈금 위치를 클릭하세요.');
+    setHint('Click the 5mm mark on the ruler in the image.');
     renderSteps();
   });
 
@@ -1175,7 +1279,7 @@ footer{
     bandTotal = idxList.length;
 
     if(bandTotal === 0){
-      setHint('5mm~15mm 구간이 이미지 범위를 벗어났습니다. 지점을 다시 찍어주세요.', true);
+      setHint('The 5–15mm band falls outside the image. Please pick the points again.', true);
       els.btnRedoPoints.click();
       return;
     }
@@ -1240,8 +1344,8 @@ footer{
     for(var k2=0;k2<bandTotal;k2++){ if(excludeMask && excludeMask[bandMask[k2]]) excludedCount++; }
     var percent = (plated/bandTotal)*100;
     els.outPercent.textContent = percent.toFixed(2) + '%';
-    els.outPixels.textContent = plated.toLocaleString() + ' / ' + bandTotal.toLocaleString() + ' px (ROI 내부 기준)' +
-      (excludedCount > 0 ? ' · 보정 제외 ' + excludedCount.toLocaleString() + 'px' : '');
+    els.outPixels.textContent = plated.toLocaleString() + ' / ' + bandTotal.toLocaleString() + ' px (inside ROI)' +
+      (excludedCount > 0 ? ' · corrected out ' + excludedCount.toLocaleString() + 'px' : '');
     els.outPercent.parentElement.classList.remove('pending');
 
     var e81c = (958 * percent) / 30656;
@@ -1273,21 +1377,21 @@ footer{
     var fin = getFinalValue();
     if(!fin){
       els.outFinal.textContent = '—';
-      els.finalLabel.textContent = '최종값';
-      els.finalSub.textContent = '이미지 1장이면 그 값, 슬롯 ①·②를 모두 채우면 합계가 표시됩니다';
+      els.finalLabel.textContent = 'Final value';
+      els.finalSub.textContent = 'Shows the single-image value, or the sum once slots ① and ② are both filled';
       els.outFinal.parentElement.classList.add('pending');
       return;
     }
     els.outFinal.parentElement.classList.remove('pending');
     els.outFinal.textContent = fin.e81c.toFixed(4);
     if(fin.fromSlots){
-      els.finalLabel.textContent = fin.isSum ? 'E81C 합계 (이미지 ① + ②)' : 'E81C (슬롯에 저장된 값)';
+      els.finalLabel.textContent = fin.isSum ? 'E81C sum (image ① + ②)' : 'E81C (value saved in slot)';
       els.finalSub.textContent = fin.isSum
         ? '① ' + slot1.e81c.toFixed(4) + ' + ② ' + slot2.e81c.toFixed(4) + ' = ' + fin.e81c.toFixed(4)
-        : '나머지 한 슬롯을 채우면 합계로 자동 갱신됩니다';
+        : 'Fill the other slot and this updates to the sum automatically';
     } else {
-      els.finalLabel.textContent = 'E81C (현재 이미지)';
-      els.finalSub.textContent = '이미지가 1장뿐이면 이 값이 최종값입니다';
+      els.finalLabel.textContent = 'E81C (current image)';
+      els.finalSub.textContent = 'With a single image, this is the final value';
     }
   }
 
@@ -1308,10 +1412,10 @@ footer{
 
   function resetResults(){
     els.outPercent.textContent = '—';
-    els.outPixels.textContent = '이미지 업로드 후 3단계를 완료하면 계산됩니다';
+    els.outPixels.textContent = 'Calculated after you upload an image and finish step 3';
     els.outPercent.parentElement.classList.add('pending');
     els.outE81C.textContent = '—';
-    els.outFormula.textContent = 'E81C = (958 × 면적률) / 30656';
+    els.outFormula.textContent = 'E81C = (958 × area %) / 30656';
     els.outE81C.parentElement.classList.add('pending');
     lastResult = null;
     els.saveRow.hidden = true;
@@ -1375,37 +1479,312 @@ footer{
     }catch(err){ return ''; }
   }
 
-  function loadHistory(){
-    try{ return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); }catch(err){ return []; }
+  // ---------------------------------------------------------------------------
+  // Measurement log storage: shared Firestore when configured, otherwise this browser's localStorage
+  // ---------------------------------------------------------------------------
+  var FB_CFG = window.BTT_FIREBASE_CONFIG;
+  var CLOUD = !!(FB_CFG && FB_CFG.apiKey && FB_CFG.projectId && window.firebase);
+  var COLLECTION = 'e81c_measurements';
+  var MIGRATION_FLAG = 'e81c.localMigrationDone';
+  var FIRESTORE_BATCH_LIMIT = 450;
+  var records = [];
+  var recordsLoaded = false;
+  var fdb = null, unsubscribe = null, toastTimer = null, pendingLocal = null;
+  function byId(id){ return document.getElementById(id); }
+  var ui = {
+    liveBadge: byId('liveBadge'), liveBadgeText: byId('liveBadgeText'), signOutBtn: byId('signOutBtn'),
+    logStorageNote: byId('logStorageNote'), toast: byId('toast'),
+    loginOverlay: byId('loginOverlay'), loginForm: byId('loginForm'), loginPassword: byId('loginPassword'),
+    loginError: byId('loginError'), loginBtn: byId('loginBtn'),
+    migrateBanner: byId('migrateBanner'), migrateBannerText: byId('migrateBannerText'),
+    migrateUploadBtn: byId('migrateUploadBtn'), migrateDismissBtn: byId('migrateDismissBtn'),
+    resetBtn: byId('resetBtn'), resetOverlay: byId('resetOverlay'), resetLogLabel: byId('resetLogLabel'),
+    resetLogConfirm: byId('resetLogConfirm'), resetConfirmInput: byId('resetConfirmInput'),
+    resetCancelBtn: byId('resetCancelBtn'), resetConfirmBtn: byId('resetConfirmBtn')
+  };
+  var DEFAULT_SAVE_HINT = els.saveHint.textContent;
+
+  function escapeHtml(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
   }
-  function saveHistoryList(list){
-    try{ localStorage.setItem(LS_KEY, JSON.stringify(list)); return true; }catch(err){ return false; }
+  function showToast(msg, isError){
+    ui.toast.textContent = msg;
+    ui.toast.className = 'toast show' + (isError ? ' error' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ ui.toast.classList.remove('show'); }, 3200);
+  }
+  function setLiveBadge(mode, text){
+    ui.liveBadge.className = 'live-badge ' + mode;
+    ui.liveBadgeText.textContent = text;
+  }
+  function chunk(arr, size){
+    var out = [];
+    for(var i=0; i<arr.length; i+=size) out.push(arr.slice(i, i+size));
+    return out;
+  }
+  function commitInBatches(items, apply){
+    return chunk(items, FIRESTORE_BATCH_LIMIT).reduce(function(p, part){
+      return p.then(function(){
+        var batch = fdb.batch();
+        part.forEach(function(item){ apply(batch, item); });
+        return batch.commit();
+      });
+    }, Promise.resolve());
   }
 
+  function loadLocalHistory(){
+    try{ return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); }catch(err){ return []; }
+  }
+  function saveLocalHistory(list){
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(list)); return true; }catch(err){ return false; }
+  }
+  function sortRecords(list){
+    return list.sort(function(a, b){ return String(b.createdAt || '').localeCompare(String(a.createdAt || '')); });
+  }
+
+  function addRecord(rec){
+    if(CLOUD) return fdb.collection(COLLECTION).doc(rec.id).set(rec);
+    var list = loadLocalHistory();
+    list.unshift(rec);
+    if(list.length > 200) list = list.slice(0, 200);
+    if(!saveLocalHistory(list)){
+      rec.thumb = null;
+      list[0] = rec;
+      if(!saveLocalHistory(list)) return Promise.reject(new Error('quota'));
+    }
+    records = list;
+    renderLog();
+    return Promise.resolve();
+  }
+  function deleteRecord(id){
+    if(CLOUD) return fdb.collection(COLLECTION).doc(id).delete();
+    records = loadLocalHistory().filter(function(v){ return v.id !== id; });
+    saveLocalHistory(records);
+    renderLog();
+    return Promise.resolve();
+  }
+  function deleteAllRecords(){
+    if(CLOUD){
+      return fdb.collection(COLLECTION).get().then(function(snap){
+        return commitInBatches(snap.docs, function(batch, d){ batch.delete(d.ref); });
+      });
+    }
+    try{ localStorage.removeItem(LS_KEY); }catch(err){}
+    records = [];
+    renderLog();
+    return Promise.resolve();
+  }
+
+  function initStorage(){
+    if(!CLOUD){
+      records = sortRecords(loadLocalHistory());
+      recordsLoaded = true;
+      ui.logStorageNote.textContent = 'Saved in this browser only (shared database not configured). Clearing browser data removes it.';
+      setLiveBadge('live', 'Saved in this browser');
+      renderLog();
+      return;
+    }
+    try{
+      if(!firebase.apps.length) firebase.initializeApp(FB_CFG);
+      fdb = firebase.firestore();
+    }catch(err){
+      console.error(err);
+      setLiveBadge('error', 'Connection error');
+      return;
+    }
+    ui.logStorageNote.textContent = 'Shared database: records are visible to the whole team on any device.';
+    firebase.auth().onAuthStateChanged(function(user){
+      if(user){
+        hideLogin();
+        ui.signOutBtn.hidden = false;
+        setLiveBadge('connecting', 'Connecting');
+        if(unsubscribe) unsubscribe();
+        unsubscribe = fdb.collection(COLLECTION).onSnapshot(function(snap){
+          records = sortRecords(snap.docs.map(function(d){ return d.data(); }));
+          var first = !recordsLoaded;
+          recordsLoaded = true;
+          setLiveBadge('live', 'Synced · shared');
+          renderLog();
+          if(first) checkLocalDataForMigration();
+        }, function(err){
+          console.error(err);
+          if(err && err.code === 'permission-denied'){
+            setLiveBadge('error', 'No access');
+            showToast('Access denied by the database. Sign in with the team password again.', true);
+          } else {
+            setLiveBadge('error', 'Sync error');
+            showToast('Lost connection to the shared database. Refresh the page.', true);
+          }
+        });
+      } else {
+        if(unsubscribe){ unsubscribe(); unsubscribe = null; }
+        records = [];
+        recordsLoaded = false;
+        renderLog();
+        ui.signOutBtn.hidden = true;
+        setLiveBadge('connecting', 'Sign-in required');
+        showLogin();
+      }
+    });
+  }
+
+  // ---- Team sign-in ----
+  function showLogin(){
+    ui.loginError.textContent = '';
+    ui.loginOverlay.classList.add('open');
+    setTimeout(function(){ ui.loginPassword.focus(); }, 0);
+  }
+  function hideLogin(){
+    ui.loginOverlay.classList.remove('open');
+    ui.loginPassword.value = '';
+  }
+  ui.loginForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    var pw = ui.loginPassword.value;
+    if(!pw){ ui.loginError.textContent = 'Enter the team password.'; return; }
+    ui.loginBtn.disabled = true;
+    ui.loginError.textContent = '';
+    firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL).then(function(){
+      return firebase.auth().signInWithEmailAndPassword(window.BTT_TEAM_EMAIL, pw);
+    }).catch(function(err){
+      console.error(err);
+      var code = err && err.code;
+      ui.loginError.textContent = (code === 'auth/wrong-password' || code === 'auth/invalid-credential' || code === 'auth/invalid-login-credentials')
+        ? 'Incorrect password.'
+        : code === 'auth/too-many-requests' ? 'Too many attempts. Wait a few minutes and try again.'
+        : code === 'auth/network-request-failed' ? 'Network error. Check your connection.'
+        : 'Sign-in failed (' + (code || 'unknown error') + ').';
+    }).then(function(){ ui.loginBtn.disabled = false; });
+  });
+  ui.signOutBtn.addEventListener('click', function(){ firebase.auth().signOut(); });
+
+  // ---- One-time upload of records saved by the old browser-only version ----
+  function checkLocalDataForMigration(){
+    try{ if(localStorage.getItem(MIGRATION_FLAG)) return; }catch(err){ return; }
+    var cloudIds = {};
+    records.forEach(function(r){ cloudIds[r.id] = true; });
+    var local = loadLocalHistory().filter(function(r){ return r && r.id && !cloudIds[r.id]; });
+    if(!local.length) return;
+    pendingLocal = local;
+    ui.migrateBannerText.textContent = 'This browser has ' + local.length + ' measurement record(s) saved by the earlier browser-only version. Upload them to the shared database so they are available on every device?';
+    ui.migrateBanner.hidden = false;
+  }
+  ui.migrateUploadBtn.addEventListener('click', function(){
+    if(!pendingLocal) return;
+    ui.migrateUploadBtn.disabled = true;
+    ui.migrateUploadBtn.textContent = 'Uploading…';
+    commitInBatches(pendingLocal, function(batch, rec){ batch.set(fdb.collection(COLLECTION).doc(String(rec.id)), rec); }).then(function(){
+      try{ localStorage.setItem(MIGRATION_FLAG, '1'); }catch(err){}
+      ui.migrateBanner.hidden = true;
+      showToast('Upload complete. ' + pendingLocal.length + ' record(s) are now shared across devices.');
+      pendingLocal = null;
+    }).catch(function(err){
+      console.error(err);
+      showToast('Upload failed. Please try again.', true);
+    }).then(function(){
+      ui.migrateUploadBtn.disabled = false;
+      ui.migrateUploadBtn.textContent = 'Upload to shared database';
+    });
+  });
+  ui.migrateDismissBtn.addEventListener('click', function(){
+    try{ localStorage.setItem(MIGRATION_FLAG, '1'); }catch(err){}
+    ui.migrateBanner.hidden = true;
+  });
+
+  // ---- Reset ----
+  function selectedResetScope(){
+    var el = document.querySelector('input[name="resetScope"]:checked');
+    return el ? el.value : 'calc';
+  }
+  function updateResetUI(){
+    var logScope = selectedResetScope() === 'log';
+    ui.resetLogConfirm.hidden = !logScope;
+    ui.resetConfirmBtn.disabled = logScope && ui.resetConfirmInput.value.trim() !== 'RESET';
+  }
+  function openReset(){
+    document.querySelector('input[name="resetScope"][value="calc"]').checked = true;
+    ui.resetLogLabel.textContent = CLOUD
+      ? 'Delete all measurement records (shared database: deletes them for the whole team)'
+      : 'Delete all measurement records saved in this browser';
+    ui.resetConfirmInput.value = '';
+    updateResetUI();
+    ui.resetOverlay.classList.add('open');
+  }
+  function closeReset(){ ui.resetOverlay.classList.remove('open'); }
+  function resetCalculation(){
+    els.btnNewImage.click();
+    slot1 = null; slot2 = null;
+    brightMode = true;
+    els.btnBright.classList.add('active');
+    els.btnDark.classList.remove('active');
+    setPaintMode('off');
+    els.cellIdInput.value = '';
+    els.e69bManual.value = '';
+    els.saveHint.textContent = DEFAULT_SAVE_HINT;
+    renderFinal();
+    showTab('calc');
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="resetScope"]'), function(r){
+    r.addEventListener('change', function(){
+      updateResetUI();
+      if(r.value === 'log' && r.checked) setTimeout(function(){ ui.resetConfirmInput.focus(); }, 0);
+    });
+  });
+  ui.resetConfirmInput.addEventListener('input', updateResetUI);
+  ui.resetBtn.addEventListener('click', openReset);
+  ui.resetCancelBtn.addEventListener('click', closeReset);
+  ui.resetOverlay.addEventListener('click', function(e){ if(e.target === ui.resetOverlay) closeReset(); });
+  ui.resetConfirmBtn.addEventListener('click', function(){
+    if(selectedResetScope() === 'calc'){
+      resetCalculation();
+      closeReset();
+      showToast('Calculation reset.');
+      return;
+    }
+    if(ui.resetConfirmInput.value.trim() !== 'RESET') return;
+    ui.resetConfirmBtn.disabled = true;
+    ui.resetConfirmBtn.textContent = 'Deleting…';
+    deleteAllRecords().then(function(){
+      closeReset();
+      showToast('All measurement records have been deleted.');
+    }).catch(function(err){
+      console.error(err);
+      showToast('Reset failed. Please try again.', true);
+    }).then(function(){
+      ui.resetConfirmBtn.textContent = 'Reset';
+      updateResetUI();
+    });
+  });
+
+  // ---- Log rendering ----
   function renderLog(){
-    var list = loadHistory();
-    els.logCount.textContent = list.length + '건';
+    var list = records;
+    els.logCount.textContent = list.length + (list.length === 1 ? ' record' : ' records');
     els.logCountBadge.textContent = list.length ? ' (' + list.length + ')' : '';
     if(list.length === 0){
       els.logGrid.innerHTML = '';
-      els.logEmpty.hidden = false;
+      els.logEmpty.hidden = !recordsLoaded;
       return;
     }
     els.logEmpty.hidden = true;
     els.logGrid.innerHTML = list.map(function(v){
-      var thumbHTML = v.thumb ? '<img class="log-thumb" src="' + v.thumb + '" alt="' + (v.cellId||'') + '" />'
-        : '<div class="log-thumb-empty">이미지 없음</div>';
+      var id = escapeHtml(v.id);
+      var thumbHTML = (typeof v.thumb === 'string' && v.thumb.indexOf('data:image/') === 0)
+        ? '<img class="log-thumb" src="' + escapeHtml(v.thumb) + '" alt="' + escapeHtml(v.cellId || '') + '" />'
+        : '<div class="log-thumb-empty">No image</div>';
       return '<div class="log-card">' +
         thumbHTML +
         '<div class="log-body">' +
-          '<div class="log-cellid">' + (v.cellId || '(ID 없음)') + (v.isSum ? '<span class="sum-badge">이미지 2장 합계</span>' : '') + '</div>' +
-          '<div class="log-row"><span>면적률' + (v.isSum?' 합계':'') + '</span><b>' + (typeof v.percent==='number' ? v.percent.toFixed(2)+'%' : '—') + '</b></div>' +
-          '<div class="log-row"><span>E81C' + (v.isSum?' 합계':'') + '</span><b>' + (typeof v.e81c==='number' ? v.e81c.toFixed(4) : '—') + '</b></div>' +
-          (v.e69b ? '<div class="log-row"><span>E69B</span><b>' + v.e69b + '</b></div>' : '') +
+          '<div class="log-cellid">' + (v.cellId ? escapeHtml(v.cellId) : '(No ID)') + (v.isSum ? '<span class="sum-badge">Sum of 2 images</span>' : '') + '</div>' +
+          '<div class="log-row"><span>Area ratio' + (v.isSum ? ' (sum)' : '') + '</span><b>' + (typeof v.percent === 'number' ? v.percent.toFixed(2) + '%' : '—') + '</b></div>' +
+          '<div class="log-row"><span>E81C' + (v.isSum ? ' (sum)' : '') + '</span><b>' + (typeof v.e81c === 'number' ? v.e81c.toFixed(4) : '—') + '</b></div>' +
+          (v.e69b ? '<div class="log-row"><span>E69B</span><b>' + escapeHtml(v.e69b) + '</b></div>' : '') +
           '<div class="log-time">' + fmtTime(v.createdAt) + '</div>' +
           '<div class="log-actions">' +
-            (v.thumb ? '<button class="log-download" data-id="' + v.id + '">다운로드</button>' : '') +
-            '<button class="log-del" data-id="' + v.id + '">삭제</button>' +
+            (v.thumb ? '<button class="log-download" data-id="' + id + '">Download</button>' : '') +
+            '<button class="log-del" data-id="' + id + '">Delete</button>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -1413,7 +1792,7 @@ footer{
     Array.prototype.forEach.call(els.logGrid.querySelectorAll('.log-download'), function(btn){
       btn.addEventListener('click', function(){
         var id = btn.getAttribute('data-id');
-        var match = loadHistory().filter(function(v){ return v.id === id; })[0];
+        var match = records.filter(function(v){ return v.id === id; })[0];
         if(!match || !match.thumb) return;
         downloadDataUrl(match.thumb, 'e81c-' + (match.cellId || id) + '.jpg');
       });
@@ -1421,9 +1800,9 @@ footer{
     Array.prototype.forEach.call(els.logGrid.querySelectorAll('.log-del'), function(btn){
       btn.addEventListener('click', function(){
         var id = btn.getAttribute('data-id');
-        var next = loadHistory().filter(function(v){ return v.id !== id; });
-        saveHistoryList(next);
-        renderLog();
+        var match = records.filter(function(v){ return v.id === id; })[0];
+        if(!confirm('Delete the record for "' + ((match && match.cellId) || '(No ID)') + '"? This cannot be undone.')) return;
+        deleteRecord(id).catch(function(err){ console.error(err); showToast('Delete failed.', true); });
       });
     });
   }
@@ -1445,24 +1824,23 @@ footer{
       thumb: makeThumb(),
       createdAt: new Date().toISOString()
     };
-    var list = loadHistory();
-    list.unshift(rec);
-    if(list.length > 200) list = list.slice(0, 200);
-    var ok = saveHistoryList(list);
-    if(!ok){
-      rec.thumb = null;
-      list[0] = rec;
-      ok = saveHistoryList(list);
-    }
-    if(ok){
-      els.saveHint.textContent = '이 브라우저에 저장되었습니다. "측정 기록" 탭에서 확인하세요.';
+    els.btnSaveLog.disabled = true;
+    addRecord(rec).then(function(){
+      els.saveHint.textContent = CLOUD
+        ? 'Saved to the shared log. See the "Measurement log" tab.'
+        : 'Saved in this browser. See the "Measurement log" tab.';
       els.cellIdInput.value = '';
       slot1 = null; slot2 = null;
       renderFinal();
-    } else {
-      els.saveHint.textContent = '저장 공간이 부족합니다. 측정 기록 탭에서 오래된 기록을 삭제해주세요.';
-    }
+    }).catch(function(err){
+      console.error(err);
+      els.saveHint.textContent = CLOUD
+        ? 'Save failed. Check your connection and sign-in, then try again.'
+        : 'Not enough storage space. Delete old records in the Measurement log tab.';
+    }).then(function(){ els.btnSaveLog.disabled = false; });
   });
+
+  initStorage();
 
   renderSteps();
 })();
