@@ -721,8 +721,9 @@ footer{
 <div class="modal-overlay" id="loginOverlay">
   <form class="modal" id="loginForm">
     <h2>Team sign-in</h2>
-    <p class="modal-text">Enter the team password to view and save the shared measurement log. This browser stays signed in until you sign out.</p>
-    <input type="password" class="modal-input" id="loginPassword" autocomplete="current-password" placeholder="Team password" />
+    <p class="modal-text">Enter your ID (email) and password to view and save the shared measurement log. This browser stays signed in until you sign out.</p>
+    <input type="email" class="modal-input" id="loginEmail" autocomplete="username" placeholder="ID (email)" style="margin-bottom:8px" />
+    <input type="password" class="modal-input" id="loginPassword" autocomplete="current-password" placeholder="Password" />
     <div class="modal-error" id="loginError"></div>
     <div class="modal-actions">
       <button class="btn" id="loginBtn" type="submit">Sign in</button>
@@ -1494,7 +1495,7 @@ footer{
   var ui = {
     liveBadge: byId('liveBadge'), liveBadgeText: byId('liveBadgeText'), signOutBtn: byId('signOutBtn'),
     logStorageNote: byId('logStorageNote'), toast: byId('toast'),
-    loginOverlay: byId('loginOverlay'), loginForm: byId('loginForm'), loginPassword: byId('loginPassword'),
+    loginOverlay: byId('loginOverlay'), loginForm: byId('loginForm'), loginEmail: byId('loginEmail'), loginPassword: byId('loginPassword'),
     loginError: byId('loginError'), loginBtn: byId('loginBtn'),
     migrateBanner: byId('migrateBanner'), migrateBannerText: byId('migrateBannerText'),
     migrateUploadBtn: byId('migrateUploadBtn'), migrateDismissBtn: byId('migrateDismissBtn'),
@@ -1612,7 +1613,7 @@ footer{
           console.error(err);
           if(err && err.code === 'permission-denied'){
             setLiveBadge('error', 'No access');
-            showToast('Access denied by the database. Sign in with the team password again.', true);
+            showToast('Access denied by the database. Sign in again with an allowed ID.', true);
           } else {
             setLiveBadge('error', 'Sync error');
             showToast('Lost connection to the shared database. Refresh the page.', true);
@@ -1634,7 +1635,7 @@ footer{
   function showLogin(){
     ui.loginError.textContent = '';
     ui.loginOverlay.classList.add('open');
-    setTimeout(function(){ ui.loginPassword.focus(); }, 0);
+    setTimeout(function(){ (ui.loginEmail.value ? ui.loginPassword : ui.loginEmail).focus(); }, 0);
   }
   function hideLogin(){
     ui.loginOverlay.classList.remove('open');
@@ -1642,17 +1643,20 @@ footer{
   }
   ui.loginForm.addEventListener('submit', function(e){
     e.preventDefault();
+    var email = ui.loginEmail.value.trim();
     var pw = ui.loginPassword.value;
-    if(!pw){ ui.loginError.textContent = 'Enter the team password.'; return; }
+    if(!email){ ui.loginError.textContent = 'Enter your ID (email).'; return; }
+    if(!pw){ ui.loginError.textContent = 'Enter your password.'; return; }
     ui.loginBtn.disabled = true;
     ui.loginError.textContent = '';
     firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL).then(function(){
-      return firebase.auth().signInWithEmailAndPassword(window.BTT_TEAM_EMAIL, pw);
+      return firebase.auth().signInWithEmailAndPassword(email, pw);
     }).catch(function(err){
       console.error(err);
       var code = err && err.code;
-      ui.loginError.textContent = (code === 'auth/wrong-password' || code === 'auth/invalid-credential' || code === 'auth/invalid-login-credentials')
-        ? 'Incorrect password.'
+      ui.loginError.textContent = (code === 'auth/wrong-password' || code === 'auth/invalid-credential' || code === 'auth/invalid-login-credentials' || code === 'auth/user-not-found')
+        ? 'Incorrect ID or password.'
+        : code === 'auth/invalid-email' ? 'Enter a valid email address as the ID.'
         : code === 'auth/too-many-requests' ? 'Too many attempts. Wait a few minutes and try again.'
         : code === 'auth/network-request-failed' ? 'Network error. Check your connection.'
         : 'Sign-in failed (' + (code || 'unknown error') + ').';
