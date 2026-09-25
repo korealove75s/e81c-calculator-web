@@ -498,6 +498,7 @@ footer{
   padding:10px 12px; margin-bottom:16px; font-size:13px; line-height:1.5;
 }
 .migrate-banner[hidden]{display:none;}
+#resetBtn[hidden]{display:none;}
 .migrate-banner span{flex:1; min-width:220px;}
 .modal-overlay{
   position:fixed; inset:0; z-index:100;
@@ -560,7 +561,7 @@ footer{
   <div class="tabs">
     <button class="tab-btn active" id="tabCalc">Calculator</button>
     <button class="tab-btn" id="tabLog">Measurement log<span id="logCountBadge"></span></button>
-    <button class="btn danger small tabs-reset" id="resetBtn" type="button">Reset</button>
+    <button class="btn danger small tabs-reset" id="resetBtn" type="button" hidden>Reset</button>
   </div>
 
   <div id="calcView">
@@ -1580,6 +1581,7 @@ footer{
 
   function initStorage(){
     if(!CLOUD){
+      ui.resetBtn.hidden = false;
       records = sortRecords(loadLocalHistory());
       recordsLoaded = true;
       ui.logStorageNote.textContent = 'Saved in this browser only (shared database not configured). Clearing browser data removes it.';
@@ -1597,6 +1599,7 @@ footer{
     }
     ui.logStorageNote.textContent = 'Shared database: records are visible to the whole team on any device.';
     firebase.auth().onAuthStateChanged(function(user){
+      ui.resetBtn.hidden = !isAdmin(user);
       if(user){
         hideLogin();
         ui.signOutBtn.hidden = false;
@@ -1697,7 +1700,14 @@ footer{
     ui.migrateBanner.hidden = true;
   });
 
-  // ---- Reset ----
+  // ---- Reset (shared database: admin account only) ----
+  function isAdmin(user){
+    var admin = String(window.BTT_ADMIN_EMAIL || '').trim().toLowerCase();
+    return !!(user && user.email && admin && user.email.toLowerCase() === admin);
+  }
+  function canReset(){
+    return !CLOUD || isAdmin(firebase.auth().currentUser);
+  }
   function selectedResetScope(){
     var el = document.querySelector('input[name="resetScope"]:checked');
     return el ? el.value : 'calc';
@@ -1708,6 +1718,7 @@ footer{
     ui.resetConfirmBtn.disabled = logScope && ui.resetConfirmInput.value.trim() !== 'RESET';
   }
   function openReset(){
+    if(!canReset()){ showToast('Only the administrator can reset.', true); return; }
     document.querySelector('input[name="resetScope"][value="calc"]').checked = true;
     ui.resetLogLabel.textContent = CLOUD
       ? 'Delete all measurement records (shared database: deletes them for the whole team)'
@@ -1741,6 +1752,7 @@ footer{
   ui.resetCancelBtn.addEventListener('click', closeReset);
   ui.resetOverlay.addEventListener('click', function(e){ if(e.target === ui.resetOverlay) closeReset(); });
   ui.resetConfirmBtn.addEventListener('click', function(){
+    if(!canReset()){ closeReset(); showToast('Only the administrator can reset.', true); return; }
     if(selectedResetScope() === 'calc'){
       resetCalculation();
       closeReset();
